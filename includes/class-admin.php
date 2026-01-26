@@ -493,8 +493,22 @@ class WP_Care_Admin {
             WP_Care_Security::generate_api_key();
         }
 
+        // Auto-register with central API if URL is configured
+        $message = __( 'Settings saved successfully.', 'wp-care-connector' );
+        if ( ! empty( $api_url ) && WP_Care_Security::has_api_key() ) {
+            $result = WP_Care_API_Endpoints::register_with_central_api();
+            if ( is_wp_error( $result ) ) {
+                $message = sprintf(
+                    __( 'Settings saved. Registration failed: %s', 'wp-care-connector' ),
+                    $result->get_error_message()
+                );
+            } else {
+                $message = __( 'Settings saved and site registered with API.', 'wp-care-connector' );
+            }
+        }
+
         // Redirect with success
-        $this->redirect_with_notice( 'success', __( 'Settings saved successfully.', 'wp-care-connector' ) );
+        $this->redirect_with_notice( 'success', $message );
         wp_safe_redirect( admin_url( 'admin.php?page=' . $this->menu_slug . '-settings' ) );
         exit;
     }
