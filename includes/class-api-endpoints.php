@@ -722,9 +722,13 @@ class WP_Care_API_Endpoints {
      * @return string The API base URL.
      */
     public static function get_api_base() {
-        // Allow override via constant
+        // Priority: constant > option > default
         if (defined('WP_CARE_API_URL')) {
             return rtrim(WP_CARE_API_URL, '/');
+        }
+        $option_url = get_option('wp_care_api_url', '');
+        if (!empty($option_url)) {
+            return rtrim($option_url, '/');
         }
         return self::$api_base;
     }

@@ -54,6 +54,7 @@ class WP_Care_Admin {
         add_action( 'admin_menu', array( $this, 'register_menu' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
         add_action( 'admin_post_wp_care_support_request', array( $this, 'handle_support_submission' ) );
+        add_action( 'admin_post_wp_care_save_settings', array( $this, 'handle_settings_save' ) );
         add_action( 'admin_notices', array( $this, 'show_notices' ) );
     }
 
@@ -85,6 +86,16 @@ class WP_Care_Admin {
             'manage_options',
             $this->menu_slug . '-status',
             array( $this, 'render_status_page' )
+        );
+
+        // Submenu - Settings page
+        add_submenu_page(
+            $this->menu_slug,
+            __( 'WP Care Settings', 'wp-care-connector' ),
+            __( 'Settings', 'wp-care-connector' ),
+            'manage_options',
+            $this->menu_slug . '-settings',
+            array( $this, 'render_settings_page' )
         );
 
         // Rename the first submenu item from "WP Care Help" to "Get Help"
@@ -359,5 +370,132 @@ class WP_Care_Admin {
         }
 
         return $found;
+    }
+
+    /**
+     * Render the settings page.
+     *
+     * @return void
+     */
+    public function render_settings_page() {
+        $api_url = get_option( 'wp_care_api_url', '' );
+        $api_key = WP_Care_Security::get_key_display();
+        $has_key = WP_Care_Security::has_api_key();
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'WP Care Settings', 'wp-care-connector' ); ?></h1>
+
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                <?php wp_nonce_field( 'wp_care_settings', '_wpnonce' ); ?>
+                <input type="hidden" name="action" value="wp_care_save_settings">
+
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="wp_care_api_url"><?php esc_html_e( 'API URL', 'wp-care-connector' ); ?></label>
+                        </th>
+                        <td>
+                            <input type="url" name="wp_care_api_url" id="wp_care_api_url"
+                                   value="<?php echo esc_attr( $api_url ); ?>"
+                                   class="regular-text"
+                                   placeholder="http://167.172.60.154:3000">
+                            <p class="description">
+                                <?php esc_html_e( 'The URL of your WP Care central API server.', 'wp-care-connector' ); ?>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <?php esc_html_e( 'API Key', 'wp-care-connector' ); ?>
+                        </th>
+                        <td>
+                            <code style="font-size: 14px; padding: 5px 10px; background: #f0f0f0;">
+                                <?php echo esc_html( $has_key ? $api_key : __( 'Not generated', 'wp-care-connector' ) ); ?>
+                            </code>
+                            <?php if ( ! $has_key ) : ?>
+                                <p class="description" style="color: #d63638;">
+                                    <?php esc_html_e( 'API key will be generated automatically when you save settings.', 'wp-care-connector' ); ?>
+                                </p>
+                            <?php else : ?>
+                                <p class="description">
+                                    <?php esc_html_e( 'This key authenticates your site with the central API.', 'wp-care-connector' ); ?>
+                                </p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+
+                <?php submit_button( __( 'Save Settings', 'wp-care-connector' ) ); ?>
+            </form>
+
+            <?php if ( $api_url && $has_key ) : ?>
+            <hr>
+            <h2><?php esc_html_e( 'Connection Test', 'wp-care-connector' ); ?></h2>
+            <p>
+                <button type="button" class="button" id="wp-care-test-connection">
+                    <?php esc_html_e( 'Test Connection', 'wp-care-connector' ); ?>
+                </button>
+                <span id="wp-care-test-result" style="margin-left: 10px;"></span>
+            </p>
+            <script>
+            document.getElementById('wp-care-test-connection').addEventListener('click', function() {
+                var resultSpan = document.getElementById('wp-care-test-result');
+                resultSpan.textContent = '<?php esc_html_e( 'Testing...', 'wp-care-connector' ); ?>';
+                resultSpan.style.color = '#666';
+
+                fetch('<?php echo esc_url( rest_url( 'wp-care/v1/health' ) ); ?>', {
+                    credentials: 'same-origin',
+                    headers: { 'X-WP-Nonce': '<?php echo esc_js( wp_create_nonce( 'wp_rest' ) ); ?>' }
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.status === 'ok') {
+                        resultSpan.textContent = '✓ <?php esc_html_e( 'Plugin endpoint working!', 'wp-care-connector' ); ?>';
+                        resultSpan.style.color = '#00a32a';
+                    } else {
+                        resultSpan.textContent = '✗ <?php esc_html_e( 'Unexpected response', 'wp-care-connector' ); ?>';
+                        resultSpan.style.color = '#d63638';
+                    }
+                })
+                .catch(function(err) {
+                    resultSpan.textContent = '✗ <?php esc_html_e( 'Connection failed', 'wp-care-connector' ); ?>: ' + err.message;
+                    resultSpan.style.color = '#d63638';
+                });
+            });
+            </script>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Handle settings form submission.
+     *
+     * @return void
+     */
+    public function handle_settings_save() {
+        // Verify nonce
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'wp_care_settings' ) ) {
+            wp_die( esc_html__( 'Security check failed.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        // Check capability
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Permission denied.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        // Save API URL
+        $api_url = isset( $_POST['wp_care_api_url'] ) ? esc_url_raw( wp_unslash( $_POST['wp_care_api_url'] ) ) : '';
+        update_option( 'wp_care_api_url', $api_url );
+
+        // Generate API key if not exists
+        if ( ! WP_Care_Security::has_api_key() ) {
+            WP_Care_Security::generate_api_key();
+        }
+
+        // Redirect with success
+        $this->redirect_with_notice( 'success', __( 'Settings saved successfully.', 'wp-care-connector' ) );
+        wp_safe_redirect( admin_url( 'admin.php?page=' . $this->menu_slug . '-settings' ) );
+        exit;
     }
 }
