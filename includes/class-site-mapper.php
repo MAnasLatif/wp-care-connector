@@ -242,7 +242,9 @@ class WP_Care_Site_Mapper {
 
             $has_update = false;
             if ( $update_plugins && isset( $update_plugins->response[ $plugin_path ] ) ) {
-                $has_update = $update_plugins->response[ $plugin_path ]->new_version ?? false;
+                $has_update = isset( $update_plugins->response[ $plugin_path ]->new_version )
+                    ? $update_plugins->response[ $plugin_path ]->new_version
+                    : false;
             }
 
             $plugins[] = array(

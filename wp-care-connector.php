@@ -9,8 +9,8 @@
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: wp-care-connector
- * Requires at least: 5.6
- * Requires PHP: 7.2
+ * Requires at least: 4.7
+ * Requires PHP: 5.6
  */
 
 // Security check: prevent direct access

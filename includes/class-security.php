@@ -43,14 +43,14 @@ class WP_Care_Security {
      *
      * @var string
      */
-    private const CIPHER = 'aes-256-cbc';
+    private static $cipher = 'aes-256-cbc';
 
     /**
      * Maximum age of request timestamp in seconds (5 minutes)
      *
      * @var int
      */
-    private const MAX_TIMESTAMP_AGE = 300;
+    private static $max_timestamp_age = 300;
 
     /**
      * Generate a new API key and store it encrypted
@@ -93,13 +93,13 @@ class WP_Care_Security {
         $key = self::get_encryption_key();
 
         // Generate random initialization vector
-        $iv_length = openssl_cipher_iv_length(self::CIPHER);
+        $iv_length = openssl_cipher_iv_length(self::$cipher);
         $iv = openssl_random_pseudo_bytes($iv_length);
 
         // Encrypt the data
         $encrypted = openssl_encrypt(
             $data,
-            self::CIPHER,
+            self::$cipher,
             $key,
             OPENSSL_RAW_DATA,
             $iv
@@ -128,14 +128,14 @@ class WP_Care_Security {
         }
 
         // Extract IV from prepended bytes
-        $iv_length = openssl_cipher_iv_length(self::CIPHER);
+        $iv_length = openssl_cipher_iv_length(self::$cipher);
         $iv = substr($data, 0, $iv_length);
         $encrypted = substr($data, $iv_length);
 
         // Decrypt and return
         return openssl_decrypt(
             $encrypted,
-            self::CIPHER,
+            self::$cipher,
             $key,
             OPENSSL_RAW_DATA,
             $iv
@@ -227,7 +227,7 @@ class WP_Care_Security {
         $current_time = time();
         $time_diff = abs($current_time - $timestamp_int);
 
-        if ($time_diff > self::MAX_TIMESTAMP_AGE) {
+        if ($time_diff > self::$max_timestamp_age) {
             return new WP_Error(
                 'timestamp_expired',
                 'Request timestamp is outside acceptable window',
