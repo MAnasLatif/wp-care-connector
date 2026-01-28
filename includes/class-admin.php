@@ -55,6 +55,9 @@ class WP_Care_Admin {
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
         add_action( 'admin_post_wp_care_support_request', array( $this, 'handle_support_submission' ) );
         add_action( 'admin_post_wp_care_save_settings', array( $this, 'handle_settings_save' ) );
+        add_action( 'admin_post_wp_care_clear_cache', array( $this, 'handle_clear_cache' ) );
+        add_action( 'admin_post_wp_care_create_backup', array( $this, 'handle_create_backup' ) );
+        add_action( 'admin_post_wp_care_create_temp_login', array( $this, 'handle_create_temp_login' ) );
         add_action( 'admin_notices', array( $this, 'show_notices' ) );
     }
 
@@ -86,6 +89,16 @@ class WP_Care_Admin {
             'manage_options',
             $this->menu_slug . '-status',
             array( $this, 'render_status_page' )
+        );
+
+        // Submenu - Tools page
+        add_submenu_page(
+            $this->menu_slug,
+            __( 'WP Care Tools', 'wp-care-connector' ),
+            __( 'Tools', 'wp-care-connector' ),
+            'manage_options',
+            $this->menu_slug . '-tools',
+            array( $this, 'render_tools_page' )
         );
 
         // Submenu - Settings page
@@ -466,6 +479,233 @@ class WP_Care_Admin {
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    /**
+     * Render the tools page.
+     *
+     * Provides standalone site management tools that work without API connection.
+     *
+     * @return void
+     */
+    public function render_tools_page() {
+        // Get backup list
+        $backup = new WP_Care_Backup();
+        $checkpoints = $backup->list_checkpoints();
+
+        // Get active temp users
+        $temp_login = new WP_Care_Temp_Login();
+        $temp_users = $temp_login->get_active_temp_users();
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'WP Care Tools', 'wp-care-connector' ); ?></h1>
+            <p class="description"><?php esc_html_e( 'Standalone site management tools. These work independently of the WP Care API.', 'wp-care-connector' ); ?></p>
+
+            <?php
+            // Display temp login URL if just generated
+            $temp_login_url = get_transient( 'wp_care_temp_login_url' );
+            if ( $temp_login_url ) :
+                delete_transient( 'wp_care_temp_login_url' );
+            ?>
+            <div class="notice notice-info" style="padding: 15px; margin: 20px 0;">
+                <h3 style="margin-top: 0;"><?php esc_html_e( 'Temporary Login Link Generated', 'wp-care-connector' ); ?></h3>
+                <p><?php esc_html_e( 'Copy this link and share it with whoever needs temporary admin access. It expires in 4 hours and works only once.', 'wp-care-connector' ); ?></p>
+                <input type="text" value="<?php echo esc_url( $temp_login_url ); ?>" readonly
+                       style="width: 100%; max-width: 600px; padding: 10px; font-family: monospace;"
+                       onclick="this.select();">
+                <p><button type="button" class="button" onclick="navigator.clipboard.writeText('<?php echo esc_js( $temp_login_url ); ?>'); this.textContent='Copied!';">
+                    <?php esc_html_e( 'Copy to Clipboard', 'wp-care-connector' ); ?>
+                </button></p>
+            </div>
+            <?php endif; ?>
+
+            <div class="wp-care-tools-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+
+                <!-- Cache Clearing -->
+                <div class="wp-care-tool-card card" style="padding: 20px;">
+                    <h2 style="margin-top: 0;">
+                        <span class="dashicons dashicons-performance" style="color: #2271b1;"></span>
+                        <?php esc_html_e( 'Clear All Caches', 'wp-care-connector' ); ?>
+                    </h2>
+                    <p><?php esc_html_e( 'Clear caches from WordPress, page builders, and popular caching plugins (W3 Total Cache, WP Super Cache, LiteSpeed, WP Rocket, and more).', 'wp-care-connector' ); ?></p>
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                        <?php wp_nonce_field( 'wp_care_clear_cache', '_wpnonce' ); ?>
+                        <input type="hidden" name="action" value="wp_care_clear_cache">
+                        <button type="submit" class="button button-primary">
+                            <span class="dashicons dashicons-trash" style="vertical-align: middle;"></span>
+                            <?php esc_html_e( 'Clear All Caches', 'wp-care-connector' ); ?>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Database Backup -->
+                <div class="wp-care-tool-card card" style="padding: 20px;">
+                    <h2 style="margin-top: 0;">
+                        <span class="dashicons dashicons-database" style="color: #2271b1;"></span>
+                        <?php esc_html_e( 'Database Backup', 'wp-care-connector' ); ?>
+                    </h2>
+                    <p><?php esc_html_e( 'Create a checkpoint backup of your database. Useful before making changes or testing updates.', 'wp-care-connector' ); ?></p>
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                        <?php wp_nonce_field( 'wp_care_create_backup', '_wpnonce' ); ?>
+                        <input type="hidden" name="action" value="wp_care_create_backup">
+                        <button type="submit" class="button button-primary">
+                            <span class="dashicons dashicons-backup" style="vertical-align: middle;"></span>
+                            <?php esc_html_e( 'Create Backup', 'wp-care-connector' ); ?>
+                        </button>
+                    </form>
+                    <?php if ( ! empty( $checkpoints ) ) : ?>
+                        <h4 style="margin-bottom: 5px;"><?php esc_html_e( 'Recent Backups', 'wp-care-connector' ); ?></h4>
+                        <ul style="margin: 0; font-size: 12px;">
+                            <?php foreach ( array_slice( $checkpoints, 0, 3 ) as $cp ) : ?>
+                                <li>
+                                    <code><?php echo esc_html( $cp['id'] ); ?></code>
+                                    <span style="color: #666;">(<?php echo esc_html( human_time_diff( $cp['created_at'] ) ); ?> ago)</span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Temporary Login -->
+                <div class="wp-care-tool-card card" style="padding: 20px;">
+                    <h2 style="margin-top: 0;">
+                        <span class="dashicons dashicons-admin-users" style="color: #2271b1;"></span>
+                        <?php esc_html_e( 'Temporary Admin Login', 'wp-care-connector' ); ?>
+                    </h2>
+                    <p><?php esc_html_e( 'Generate a secure temporary admin login link. Perfect for giving support access without sharing your password. Expires in 4 hours.', 'wp-care-connector' ); ?></p>
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                        <?php wp_nonce_field( 'wp_care_create_temp_login', '_wpnonce' ); ?>
+                        <input type="hidden" name="action" value="wp_care_create_temp_login">
+                        <button type="submit" class="button button-primary">
+                            <span class="dashicons dashicons-admin-network" style="vertical-align: middle;"></span>
+                            <?php esc_html_e( 'Generate Login Link', 'wp-care-connector' ); ?>
+                        </button>
+                    </form>
+                    <?php if ( ! empty( $temp_users ) ) : ?>
+                        <h4 style="margin-bottom: 5px;"><?php esc_html_e( 'Active Temp Users', 'wp-care-connector' ); ?></h4>
+                        <ul style="margin: 0; font-size: 12px;">
+                            <?php foreach ( $temp_users as $user ) : ?>
+                                <li>
+                                    <?php echo esc_html( $user['username'] ); ?>
+                                    <span style="color: #666;">(expires <?php echo esc_html( human_time_diff( $user['expires'] ) ); ?>)</span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Site Health Export -->
+                <div class="wp-care-tool-card card" style="padding: 20px;">
+                    <h2 style="margin-top: 0;">
+                        <span class="dashicons dashicons-download" style="color: #2271b1;"></span>
+                        <?php esc_html_e( 'Export Site Info', 'wp-care-connector' ); ?>
+                    </h2>
+                    <p><?php esc_html_e( 'Download your site information as JSON. Useful for support requests or documentation.', 'wp-care-connector' ); ?></p>
+                    <a href="<?php echo esc_url( rest_url( 'wp-care/v1/ping' ) ); ?>" class="button" target="_blank">
+                        <span class="dashicons dashicons-external" style="vertical-align: middle;"></span>
+                        <?php esc_html_e( 'View Site Info', 'wp-care-connector' ); ?>
+                    </a>
+                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=wp-care-connector-status' ) ); ?>" class="button">
+                        <?php esc_html_e( 'Full Status Page', 'wp-care-connector' ); ?>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Handle cache clearing.
+     *
+     * @return void
+     */
+    public function handle_clear_cache() {
+        // Verify nonce
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'wp_care_clear_cache' ) ) {
+            wp_die( esc_html__( 'Security check failed.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Permission denied.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        // Use the API endpoint's cache clearing logic
+        $api = WP_Care_API_Endpoints::instance();
+        $result = $api->cmd_clear_cache( array() );
+
+        $cleared = implode( ', ', $result['cleared'] );
+        $message = sprintf(
+            __( 'Caches cleared successfully: %s', 'wp-care-connector' ),
+            $cleared
+        );
+
+        $this->redirect_with_notice( 'success', $message );
+        wp_safe_redirect( admin_url( 'admin.php?page=' . $this->menu_slug . '-tools' ) );
+        exit;
+    }
+
+    /**
+     * Handle backup creation.
+     *
+     * @return void
+     */
+    public function handle_create_backup() {
+        // Verify nonce
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'wp_care_create_backup' ) ) {
+            wp_die( esc_html__( 'Security check failed.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Permission denied.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        $backup = new WP_Care_Backup();
+        $checkpoint_id = $backup->create_checkpoint( 'manual_admin' );
+
+        if ( $checkpoint_id === false ) {
+            $this->redirect_with_notice( 'error', __( 'Failed to create backup. Check error logs.', 'wp-care-connector' ) );
+        } else {
+            $message = sprintf(
+                __( 'Backup created successfully: %s', 'wp-care-connector' ),
+                $checkpoint_id
+            );
+            $this->redirect_with_notice( 'success', $message );
+        }
+
+        wp_safe_redirect( admin_url( 'admin.php?page=' . $this->menu_slug . '-tools' ) );
+        exit;
+    }
+
+    /**
+     * Handle temporary login creation.
+     *
+     * @return void
+     */
+    public function handle_create_temp_login() {
+        // Verify nonce
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'wp_care_create_temp_login' ) ) {
+            wp_die( esc_html__( 'Security check failed.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Permission denied.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        $temp_login = new WP_Care_Temp_Login();
+        $current_user = wp_get_current_user();
+        $result = $temp_login->create_login( $current_user->user_login );
+
+        if ( is_wp_error( $result ) ) {
+            $this->redirect_with_notice( 'error', $result->get_error_message() );
+        } else {
+            // Store the login URL in a transient so we can display it
+            set_transient( 'wp_care_temp_login_url', $result, 60 );
+            $this->redirect_with_notice( 'success', __( 'Temporary login created! The link is shown below.', 'wp-care-connector' ) );
+        }
+
+        wp_safe_redirect( admin_url( 'admin.php?page=' . $this->menu_slug . '-tools' ) );
+        exit;
     }
 
     /**
