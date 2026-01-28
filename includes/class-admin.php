@@ -436,6 +436,30 @@ class WP_Care_Admin {
                             <?php endif; ?>
                         </td>
                     </tr>
+                    <tr>
+                        <th scope="row">
+                            <?php esc_html_e( 'Connect to Platform', 'wp-care-connector' ); ?>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="wp_care_consent" value="1"
+                                       <?php checked( get_option( 'wp_care_consent', false ) ); ?>>
+                                <?php esc_html_e( 'I consent to connect this site to the WP Care Platform', 'wp-care-connector' ); ?>
+                            </label>
+                            <p class="description">
+                                <?php esc_html_e( 'When enabled, the following data will be transmitted to the WP Care Platform:', 'wp-care-connector' ); ?>
+                            </p>
+                            <ul style="list-style: disc; margin-left: 20px; color: #666;">
+                                <li><?php esc_html_e( 'Site URL and name', 'wp-care-connector' ); ?></li>
+                                <li><?php esc_html_e( 'WordPress and PHP versions', 'wp-care-connector' ); ?></li>
+                                <li><?php esc_html_e( 'Active theme and plugins', 'wp-care-connector' ); ?></li>
+                                <li><?php esc_html_e( 'Content statistics (post/page counts)', 'wp-care-connector' ); ?></li>
+                            </ul>
+                            <p class="description">
+                                <?php esc_html_e( 'No passwords, personal data, or content is ever transmitted.', 'wp-care-connector' ); ?>
+                            </p>
+                        </td>
+                    </tr>
                 </table>
 
                 <?php submit_button( __( 'Save Settings', 'wp-care-connector' ) ); ?>
@@ -728,14 +752,18 @@ class WP_Care_Admin {
         $api_url = isset( $_POST['wp_care_api_url'] ) ? esc_url_raw( wp_unslash( $_POST['wp_care_api_url'] ) ) : '';
         update_option( 'wp_care_api_url', $api_url );
 
+        // Save consent preference
+        $consent = isset( $_POST['wp_care_consent'] ) && $_POST['wp_care_consent'] === '1';
+        update_option( 'wp_care_consent', $consent );
+
         // Generate API key if not exists
         if ( ! WP_Care_Security::has_api_key() ) {
             WP_Care_Security::generate_api_key();
         }
 
-        // Auto-register with central API if URL is configured
+        // Only register with central API if user has given explicit consent
         $message = __( 'Settings saved successfully.', 'wp-care-connector' );
-        if ( ! empty( $api_url ) && WP_Care_Security::has_api_key() ) {
+        if ( $consent && ! empty( $api_url ) && WP_Care_Security::has_api_key() ) {
             $result = WP_Care_API_Endpoints::register_with_central_api();
             if ( is_wp_error( $result ) ) {
                 $message = sprintf(
@@ -745,6 +773,8 @@ class WP_Care_Admin {
             } else {
                 $message = __( 'Settings saved and site registered with API.', 'wp-care-connector' );
             }
+        } elseif ( ! $consent && ! empty( $api_url ) ) {
+            $message = __( 'Settings saved. Check the consent box to connect to the platform.', 'wp-care-connector' );
         }
 
         // Redirect with success
