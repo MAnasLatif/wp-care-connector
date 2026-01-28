@@ -162,6 +162,15 @@ class WP_Care_API_Endpoints {
             'permission_callback' => '__return_true',
         ]);
 
+        // GET /wp-care/v1/api-key - Returns API key for onboarding (requires WP auth with manage_options)
+        register_rest_route($this->namespace, '/api-key', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'api_key_endpoint'],
+            'permission_callback' => function () {
+                return current_user_can('manage_options');
+            },
+        ]);
+
         // Allow external plugins to register commands
         do_action('wp_care_register_commands', $this);
     }
@@ -180,6 +189,34 @@ class WP_Care_API_Endpoints {
             'status'    => 'ok',
             'timestamp' => time(),
             'site_map'  => $this->site_mapper->get_site_map(),
+        ]);
+    }
+
+    /**
+     * API Key endpoint handler
+     *
+     * Returns the site's API key for onboarding. Requires WordPress
+     * authentication with manage_options capability (admin).
+     * Used by central API during automated plugin installation.
+     *
+     * @param WP_REST_Request $request The REST API request.
+     * @return WP_REST_Response|WP_Error API key or error.
+     */
+    public function api_key_endpoint($request) {
+        $api_key = WP_Care_Security::get_api_key();
+
+        if (!$api_key) {
+            return new WP_Error(
+                'no_api_key',
+                'API key not configured. Please reactivate the plugin.',
+                ['status' => 500]
+            );
+        }
+
+        return rest_ensure_response([
+            'success' => true,
+            'apiKey'  => $api_key,
+            'domain'  => home_url(),
         ]);
     }
 
