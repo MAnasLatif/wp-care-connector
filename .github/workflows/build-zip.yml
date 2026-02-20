@@ -1,0 +1,26 @@
+name: Build Plugin ZIP
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ZIP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create ZIP
+        run: |
+          mkdir -p build
+          zip -r build/wp-care-connector.zip . -x "*.git*" -x "build/*" -x ".github/*"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-care-connector
+          path: build/wp-care-connector.zip
+          retention-days: 30

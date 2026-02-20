@@ -1,0 +1,288 @@
+/**
+ * WP Care Admin Styles
+ *
+ * Styles for the WP Care Connector admin pages.
+ * Only loaded on plugin admin pages via WP_Care_Admin::enqueue_assets().
+ *
+ * @package WP_Care_Connector
+ * @since 1.0.0
+ */
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+
+.wp-care-wrap {
+    max-width: 1200px;
+}
+
+.wp-care-wrap h1 {
+    margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   Support Form Styles
+   ========================================================================== */
+
+.wp-care-support-form-container {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.wp-care-form-intro {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.wp-care-form-intro p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+}
+
+.wp-care-support-form .form-table th {
+    padding-left: 0;
+    width: 150px;
+}
+
+.wp-care-support-form .required {
+    color: #d63638;
+}
+
+.wp-care-support-form textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+/* Site Context Box */
+.wp-care-site-context {
+    background: #f6f7f7;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 15px 20px;
+    margin: 20px 0;
+}
+
+.wp-care-site-context h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.wp-care-site-context .description {
+    margin-bottom: 12px;
+}
+
+.wp-care-context-summary ul {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 8px;
+}
+
+.wp-care-context-summary li {
+    margin: 0;
+    padding: 4px 8px;
+    background: #fff;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   Status Page Styles
+   ========================================================================== */
+
+.wp-care-status-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.wp-care-status-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+}
+
+.wp-care-status-card h2 {
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e5e5;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Status Indicator */
+.wp-care-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.wp-care-status-indicator.status-connected {
+    background: #e6f6e6;
+    color: #1e4620;
+}
+
+.wp-care-status-indicator.status-disconnected {
+    background: #fcf0f1;
+    color: #8a1f1f;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-connected .status-dot {
+    background: #00a32a;
+    box-shadow: 0 0 0 2px rgba(0, 163, 42, 0.2);
+}
+
+.status-disconnected .status-dot {
+    background: #d63638;
+    box-shadow: 0 0 0 2px rgba(214, 54, 56, 0.2);
+}
+
+/* Status Tables */
+.wp-care-status-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.wp-care-status-table th,
+.wp-care-status-table td {
+    padding: 8px 0;
+    text-align: left;
+    font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.wp-care-status-table th {
+    font-weight: 500;
+    color: #50575e;
+    width: 40%;
+}
+
+.wp-care-status-table tr:last-child th,
+.wp-care-status-table tr:last-child td {
+    border-bottom: none;
+}
+
+.wp-care-status-table code {
+    background: #f6f7f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.wp-care-api-key {
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+/* Status Icons */
+.wp-care-status-table .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-left: 5px;
+}
+
+.status-ok {
+    color: #00a32a;
+}
+
+.status-warning {
+    color: #dba617;
+}
+
+/* Version and Badge Styles */
+.wp-care-version {
+    color: #787c82;
+    font-size: 12px;
+}
+
+.wp-care-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    background: #e5e5e5;
+    color: #50575e;
+    margin-left: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wp-care-badge-pro {
+    background: #8c5fc7;
+    color: #fff;
+}
+
+.wp-care-badge-update {
+    background: #ffc107;
+    color: #3c3c3c;
+}
+
+/* Plugin List */
+.wp-care-plugin-list {
+    margin: 10px 0 0 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.wp-care-plugin-list li {
+    padding: 6px 8px;
+    margin: 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+
+.wp-care-plugin-list li:last-child {
+    border-bottom: none;
+}
+
+.wp-care-plugin-list li:nth-child(odd) {
+    background: #fafafa;
+}
+
+/* Status Footer */
+.wp-care-status-footer {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 10px;
+    color: #787c82;
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media screen and (max-width: 782px) {
+    .wp-care-status-container {
+        grid-template-columns: 1fr;
+    }
+
+    .wp-care-support-form .form-table th {
+        width: auto;
+        display: block;
+        padding-bottom: 5px;
+    }
+
+    .wp-care-context-summary ul {
+        grid-template-columns: 1fr;
+    }
+}
