@@ -3,7 +3,7 @@
  * Plugin Name: WP Care Connector
  * Plugin URI: https://wpcare.io
  * Description: Secure remote WordPress management for WP Care Platform
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: WP Care
  * Author URI: https://wpcare.io
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WP_CARE_VERSION', '1.0.0');
+define('WP_CARE_VERSION', '1.1.0');
 define('WP_CARE_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WP_CARE_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('WP_CARE_PLUGIN_FILE', __FILE__);
