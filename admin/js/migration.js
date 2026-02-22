@@ -37,6 +37,33 @@
         },
 
         // =================================================================
+        // Panel Toggle
+        // =================================================================
+
+        /**
+         * Toggle a panel open/closed. Closes other panels first.
+         */
+        togglePanel: function(panelId) {
+            var $panel = $('#' + panelId);
+            var isVisible = $panel.is(':visible');
+
+            // Close all panels
+            $('.wp-care-panel').hide();
+
+            // Toggle target
+            if (!isVisible) {
+                $panel.show();
+            }
+        },
+
+        /**
+         * Close all panels.
+         */
+        closePanels: function() {
+            $('.wp-care-panel').hide();
+        },
+
+        // =================================================================
         // Export
         // =================================================================
 
@@ -345,8 +372,8 @@
 
             $('#wp-care-migration-progress').hide();
             $('#wp-care-migration-download').show();
-            $('#wp-care-migration-cancel').hide();
-            $('#wp-care-migration-start').prop('disabled', false).show();
+            $('#wp-care-migrations-table').show();
+            $('#wp-care-btn-create, #wp-care-btn-upload').show();
         },
 
         /**
@@ -364,8 +391,8 @@
 
             $('#wp-care-migration-progress').hide();
             $('#wp-care-restore-complete').show();
-            $('#wp-care-migration-cancel').hide();
-            $('#wp-care-migration-start').prop('disabled', false);
+            $('#wp-care-migrations-table').show();
+            $('#wp-care-btn-create, #wp-care-btn-upload').show();
 
             $('.wp-care-migration-checkboxes input').prop('disabled', false);
         },
@@ -390,20 +417,29 @@
          */
         updateUI: function(state) {
             if (state === 'running') {
-                $('#wp-care-migration-start').prop('disabled', true);
-                $('#wp-care-migration-cancel').show();
-                $('#wp-care-migration-progress').show();
+                // Hide everything except progress
+                $('.wp-care-panel').hide();
+                $('#wp-care-migrations-table').hide();
                 $('#wp-care-migration-download').hide();
                 $('#wp-care-restore-complete').hide();
                 $('#wp-care-migration-error').hide();
+                $('#wp-care-btn-create, #wp-care-btn-upload').hide();
+
+                // Show progress
+                $('#wp-care-migration-progress').show();
                 $('.wp-care-progress-fill').css('width', '0%');
                 $('.wp-care-progress-status').text(wpCareMigration.strings.initializing);
                 $('.wp-care-progress-detail').text('');
+
+                // Disable inputs
                 $('.wp-care-migration-checkboxes input').prop('disabled', true);
                 $('.wp-care-restore-btn').prop('disabled', true);
             } else {
-                $('#wp-care-migration-start').prop('disabled', false);
-                $('#wp-care-migration-cancel').hide();
+                // Show table and action buttons
+                $('#wp-care-migrations-table').show();
+                $('#wp-care-btn-create, #wp-care-btn-upload').show();
+
+                // Enable inputs
                 $('.wp-care-migration-checkboxes input').prop('disabled', false);
                 $('.wp-care-restore-btn').prop('disabled', false);
             }
@@ -411,6 +447,23 @@
     };
 
     $(document).ready(function() {
+        // Panel toggle buttons
+        $('#wp-care-btn-create').on('click', function(e) {
+            e.preventDefault();
+            WPCareMigration.togglePanel('wp-care-panel-create');
+        });
+
+        $('#wp-care-btn-upload').on('click', function(e) {
+            e.preventDefault();
+            WPCareMigration.togglePanel('wp-care-panel-upload');
+        });
+
+        // Panel close buttons
+        $(document).on('click', '.wp-care-panel-close', function(e) {
+            e.preventDefault();
+            $(this).closest('.wp-care-panel').hide();
+        });
+
         // Export
         $('#wp-care-migration-start').on('click', function(e) {
             e.preventDefault();

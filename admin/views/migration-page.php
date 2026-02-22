@@ -13,20 +13,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <div class="wrap wp-care-wrap">
-    <h1><?php esc_html_e( 'Site Migration', 'wp-care-connector' ); ?></h1>
-    <p class="description"><?php esc_html_e( 'Create, upload, or restore full site migrations (database + files).', 'wp-care-connector' ); ?></p>
+    <h1 class="wp-heading-inline"><?php esc_html_e( 'Site Migration', 'wp-care-connector' ); ?></h1>
+    <button type="button" id="wp-care-btn-create" class="page-title-action"><?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?></button>
+    <button type="button" id="wp-care-btn-upload" class="page-title-action"><?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?></button>
+    <hr class="wp-header-end">
 
-    <!-- ================================================================
-         EXPORT SECTION
-         ================================================================ -->
-    <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
+    <!-- Create Migration Panel (hidden by default) -->
+    <div id="wp-care-panel-create" class="card wp-care-panel" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
         <h2 style="margin-top: 0;">
-            <span class="dashicons dashicons-upload" style="color: #2271b1; vertical-align: middle;"></span>
             <?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?>
+            <button type="button" class="wp-care-panel-close" style="float: right; background: none; border: none; cursor: pointer; font-size: 20px; color: #787c82; line-height: 1;">&times;</button>
         </h2>
 
         <div class="wp-care-migration-checkboxes">
-            <div class="">
+            <div>
                 <h3 style="margin-bottom: 8px;"><?php esc_html_e( 'Include in migration', 'wp-care-connector' ); ?></h3>
                 <label><input type="checkbox" id="wp-care-opt-include_database" checked> <?php esc_html_e( 'Database', 'wp-care-connector' ); ?></label>
                 <label><input type="checkbox" id="wp-care-opt-include_themes" checked> <?php esc_html_e( 'Themes', 'wp-care-connector' ); ?></label>
@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                 <label><input type="checkbox" id="wp-care-opt-include_uploads" checked> <?php esc_html_e( 'Media / Uploads', 'wp-care-connector' ); ?></label>
                 <label><input type="checkbox" id="wp-care-opt-include_mu_plugins"> <?php esc_html_e( 'Must-Use Plugins', 'wp-care-connector' ); ?></label>
             </div>
-            <div class="">
+            <div>
                 <h3 style="margin-top: 16px; margin-bottom: 8px;"><?php esc_html_e( 'Exclusions', 'wp-care-connector' ); ?></h3>
                 <label><input type="checkbox" id="wp-care-opt-exclude_cache" checked> <?php esc_html_e( 'Exclude cache files', 'wp-care-connector' ); ?></label>
                 <label><input type="checkbox" id="wp-care-opt-exclude_inactive_themes"> <?php esc_html_e( 'Exclude inactive themes', 'wp-care-connector' ); ?></label>
@@ -45,61 +45,18 @@ if ( ! defined( 'ABSPATH' ) ) {
         </div>
 
         <div style="margin-top: 20px;">
-            <button id="wp-care-migration-start" class="button button-primary button-hero">
+            <button id="wp-care-migration-start" class="button button-primary">
                 <span class="dashicons dashicons-migrate" style="vertical-align: middle; margin-right: 4px;"></span>
                 <?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?>
             </button>
-            <button id="wp-care-migration-cancel" class="button" style="display: none; margin-left: 10px;">
-                <?php esc_html_e( 'Cancel', 'wp-care-connector' ); ?>
-            </button>
         </div>
     </div>
 
-    <!-- Export/Restore Progress Section (shared) -->
-    <div id="wp-care-migration-progress" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
-        <h2 id="wp-care-progress-title" style="margin-top: 0;"><?php esc_html_e( 'Export Progress', 'wp-care-connector' ); ?></h2>
-        <div class="wp-care-progress-bar">
-            <div class="wp-care-progress-fill" style="width: 0%;"></div>
-        </div>
-        <p class="wp-care-progress-status" style="margin-bottom: 4px;"><?php esc_html_e( 'Initializing...', 'wp-care-connector' ); ?></p>
-        <p class="wp-care-progress-detail" style="margin-top: 0;"></p>
-    </div>
-
-    <!-- Download Section -->
-    <div id="wp-care-migration-download" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
-        <h2 style="margin-top: 0; color: #00a32a;">
-            <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
-            <?php esc_html_e( 'Migration Complete!', 'wp-care-connector' ); ?>
-        </h2>
-        <p id="wp-care-migration-filesize"></p>
-        <a href="#" id="wp-care-migration-download-link" class="button button-primary button-hero">
-            <span class="dashicons dashicons-download" style="vertical-align: middle; margin-right: 4px;"></span>
-            <?php esc_html_e( 'Download Migration File', 'wp-care-connector' ); ?>
-        </a>
-    </div>
-
-    <!-- Restore Complete Section -->
-    <div id="wp-care-restore-complete" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
-        <h2 style="margin-top: 0; color: #00a32a;">
-            <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
-            <?php esc_html_e( 'Site Restored Successfully!', 'wp-care-connector' ); ?>
-        </h2>
-        <p><?php esc_html_e( 'Your site has been restored from the migration.', 'wp-care-connector' ); ?></p>
-        <p id="wp-care-restore-checkpoint" style="color: #666;"></p>
-    </div>
-
-    <!-- Error Section -->
-    <div id="wp-care-migration-error" class="notice notice-error" style="max-width: 800px; margin-top: 20px; display: none;">
-        <p id="wp-care-migration-error-message"></p>
-    </div>
-
-    <!-- ================================================================
-         UPLOAD SECTION
-         ================================================================ -->
-    <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
+    <!-- Upload Migration Panel (hidden by default) -->
+    <div id="wp-care-panel-upload" class="card wp-care-panel" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
         <h2 style="margin-top: 0;">
-            <span class="dashicons dashicons-upload" style="color: #2271b1; vertical-align: middle;"></span>
             <?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?>
+            <button type="button" class="wp-care-panel-close" style="float: right; background: none; border: none; cursor: pointer; font-size: 20px; color: #787c82; line-height: 1;">&times;</button>
         </h2>
         <p><?php esc_html_e( 'Upload a .zip migration file previously exported from this or another site.', 'wp-care-connector' ); ?></p>
 
@@ -126,15 +83,50 @@ if ( ! defined( 'ABSPATH' ) ) {
         </form>
     </div>
 
-    <!-- ================================================================
-         EXISTING MIGRATIONS / RESTORE
-         ================================================================ -->
-    <?php if ( ! empty( $migrations ) ) : ?>
-    <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
-        <h2 style="margin-top: 0;">
-            <span class="dashicons dashicons-backup" style="color: #2271b1; vertical-align: middle;"></span>
-            <?php esc_html_e( 'Available Migrations', 'wp-care-connector' ); ?>
+    <!-- Progress Section (shown during export/restore, hides everything else) -->
+    <div id="wp-care-migration-progress" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
+        <h2 id="wp-care-progress-title" style="margin-top: 0;"><?php esc_html_e( 'Export Progress', 'wp-care-connector' ); ?></h2>
+        <div class="wp-care-progress-bar">
+            <div class="wp-care-progress-fill" style="width: 0%;"></div>
+        </div>
+        <p class="wp-care-progress-status" style="margin-bottom: 4px;"><?php esc_html_e( 'Initializing...', 'wp-care-connector' ); ?></p>
+        <p class="wp-care-progress-detail" style="margin-top: 0;"></p>
+        <button id="wp-care-migration-cancel" class="button" style="margin-top: 10px;">
+            <?php esc_html_e( 'Cancel', 'wp-care-connector' ); ?>
+        </button>
+    </div>
+
+    <!-- Download Section (shown after export complete) -->
+    <div id="wp-care-migration-download" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
+        <h2 style="margin-top: 0; color: #00a32a;">
+            <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
+            <?php esc_html_e( 'Migration Complete!', 'wp-care-connector' ); ?>
         </h2>
+        <p id="wp-care-migration-filesize"></p>
+        <a href="#" id="wp-care-migration-download-link" class="button button-primary">
+            <span class="dashicons dashicons-download" style="vertical-align: middle; margin-right: 4px;"></span>
+            <?php esc_html_e( 'Download Migration File', 'wp-care-connector' ); ?>
+        </a>
+    </div>
+
+    <!-- Restore Complete Section -->
+    <div id="wp-care-restore-complete" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
+        <h2 style="margin-top: 0; color: #00a32a;">
+            <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
+            <?php esc_html_e( 'Site Restored Successfully!', 'wp-care-connector' ); ?>
+        </h2>
+        <p><?php esc_html_e( 'Your site has been restored from the migration.', 'wp-care-connector' ); ?></p>
+        <p id="wp-care-restore-checkpoint" style="color: #666;"></p>
+    </div>
+
+    <!-- Error Section -->
+    <div id="wp-care-migration-error" class="notice notice-error" style="max-width: 800px; margin-top: 20px; display: none;">
+        <p id="wp-care-migration-error-message"></p>
+    </div>
+
+    <!-- Available Migrations Table -->
+    <div id="wp-care-migrations-table" style="max-width: 800px; margin-top: 20px;">
+        <?php if ( ! empty( $migrations ) ) : ?>
         <table class="widefat striped">
             <thead>
                 <tr>
@@ -185,12 +177,14 @@ if ( ! defined( 'ABSPATH' ) ) {
                 <?php endforeach; ?>
             </tbody>
         </table>
+        <?php else : ?>
+        <p class="description"><?php esc_html_e( 'No migrations yet. Click "Create Migration" or "Upload Migration" to get started.', 'wp-care-connector' ); ?></p>
+        <?php endif; ?>
     </div>
-    <?php endif; ?>
 
     <!-- Restore Confirmation Modal -->
-    <div id="wp-care-restore-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%;">
+    <div id="wp-care-restore-modal" class="wp-care-modal-backdrop" style="display: none;">
+        <div class="wp-care-modal-content">
             <h2 style="margin-top: 0; color: #d63638;">
                 <span class="dashicons dashicons-warning" style="vertical-align: middle;"></span>
                 <?php esc_html_e( 'Confirm Restore', 'wp-care-connector' ); ?>
