@@ -1051,6 +1051,563 @@ class WP_Care_Migration {
         return is_array( $data ) ? $data : false;
     }
 
+    // =========================================================================
+    // Upload
+    // =========================================================================
+
+    /**
+     * Handle an uploaded migration ZIP file.
+     *
+     * Validates the archive contains a package.json, stores it
+     * in the migrations directory, and writes migration.json metadata.
+     *
+     * @param array $file $_FILES entry for the uploaded file.
+     * @return array|WP_Error Migration metadata on success, WP_Error on failure.
+     */
+    public function handle_upload( $file ) {
+        if ( ! self::ensure_migration_dir() ) {
+            return new WP_Error( 'dir_failed', 'Migration directory is not writable.' );
+        }
+
+        // Basic file validation
+        if ( empty( $file['tmp_name'] ) || ! is_uploaded_file( $file['tmp_name'] ) ) {
+            return new WP_Error( 'upload_failed', 'No file was uploaded.' );
+        }
+
+        if ( $file['error'] !== UPLOAD_ERR_OK ) {
+            return new WP_Error( 'upload_error', 'Upload error code: ' . $file['error'] );
+        }
+
+        // Validate file extension
+        $ext = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
+        if ( $ext !== 'zip' ) {
+            return new WP_Error( 'invalid_type', 'Only .zip files are accepted.' );
+        }
+
+        // Validate it's actually a ZIP by trying to open it
+        $archiver = $this->get_archiver();
+        if ( ! $archiver ) {
+            return new WP_Error( 'no_archiver', 'No ZIP archiver available on this server.' );
+        }
+
+        $validation = $this->validate_archive( $file['tmp_name'] );
+        if ( is_wp_error( $validation ) ) {
+            return $validation;
+        }
+
+        // Create migration directory
+        $migration_id = 'upload_' . gmdate( 'Ymd_His' ) . '_' . wp_generate_password( 6, false, false );
+        $working_dir  = $this->migration_dir . '/' . $migration_id;
+
+        if ( ! wp_mkdir_p( $working_dir ) ) {
+            return new WP_Error( 'dir_failed', 'Failed to create migration directory.' );
+        }
+
+        // Move uploaded file
+        $zip_path = $working_dir . '/migration.zip';
+        if ( ! move_uploaded_file( $file['tmp_name'], $zip_path ) ) {
+            $this->recursive_delete( $working_dir );
+            return new WP_Error( 'move_failed', 'Failed to store uploaded file.' );
+        }
+
+        $archive_size = filesize( $zip_path );
+
+        // Write migration metadata
+        $metadata = array(
+            'id'                 => $migration_id,
+            'created_at'         => gmdate( 'c' ),
+            'completed_at'       => gmdate( 'c' ),
+            'site_url'           => isset( $validation['site_url'] ) ? $validation['site_url'] : 'unknown',
+            'wp_version'         => isset( $validation['wp_version'] ) ? $validation['wp_version'] : 'unknown',
+            'php_version'        => isset( $validation['php_version'] ) ? $validation['php_version'] : 'unknown',
+            'plugin_version'     => isset( $validation['version'] ) ? $validation['version'] : 'unknown',
+            'archive_file'       => 'migration.zip',
+            'archive_size'       => $archive_size,
+            'archive_size_human' => size_format( $archive_size ),
+            'source'             => 'upload',
+            'original_filename'  => sanitize_file_name( $file['name'] ),
+            'has_database'       => $validation['has_database'],
+            'has_files'          => $validation['has_files'],
+            'total_files'        => 0,
+            'total_files_size'   => 0,
+        );
+
+        $metadata_path = $working_dir . '/migration.json';
+        file_put_contents( $metadata_path, wp_json_encode( $metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
+
+        $this->cleanup_old_migrations();
+
+        return $metadata;
+    }
+
+    /**
+     * Validate that a ZIP file is a valid migration archive.
+     *
+     * Checks for the presence of package.json and/or database.sql.
+     *
+     * @param string $zip_path Path to the ZIP file.
+     * @return array|WP_Error Validation info or error.
+     */
+    private function validate_archive( $zip_path ) {
+        if ( ! class_exists( 'ZipArchive' ) ) {
+            // Fall back to basic size check if ZipArchive not available
+            if ( filesize( $zip_path ) < 100 ) {
+                return new WP_Error( 'invalid_archive', 'Archive file appears to be empty or corrupt.' );
+            }
+            return array(
+                'has_database' => false,
+                'has_files'    => true,
+                'site_url'     => null,
+                'wp_version'   => null,
+                'php_version'  => null,
+                'version'      => null,
+            );
+        }
+
+        $zip = new ZipArchive();
+        $result = $zip->open( $zip_path );
+        if ( $result !== true ) {
+            return new WP_Error( 'invalid_archive', 'Could not open ZIP file. It may be corrupt.' );
+        }
+
+        $has_database = ( $zip->locateName( 'database.sql' ) !== false );
+        $has_files    = ( $zip->numFiles > ( $has_database ? 1 : 0 ) );
+
+        // Try to read package.json for metadata
+        $config = array(
+            'site_url'    => null,
+            'wp_version'  => null,
+            'php_version' => null,
+            'version'     => null,
+        );
+
+        $package_index = $zip->locateName( 'package.json' );
+        if ( $package_index !== false ) {
+            $package_content = $zip->getFromIndex( $package_index );
+            if ( $package_content ) {
+                $package = json_decode( $package_content, true );
+                if ( is_array( $package ) ) {
+                    $config['site_url']    = isset( $package['site_url'] ) ? $package['site_url'] : null;
+                    $config['wp_version']  = isset( $package['wp_version'] ) ? $package['wp_version'] : null;
+                    $config['php_version'] = isset( $package['php_version'] ) ? $package['php_version'] : null;
+                    $config['version']     = isset( $package['version'] ) ? $package['version'] : null;
+                }
+            }
+        }
+
+        $zip->close();
+
+        if ( ! $has_database && ! $has_files ) {
+            return new WP_Error( 'empty_archive', 'The archive does not contain any migration data.' );
+        }
+
+        return array_merge( $config, array(
+            'has_database' => $has_database,
+            'has_files'    => $has_files,
+        ) );
+    }
+
+    // =========================================================================
+    // Restore
+    // =========================================================================
+
+    /**
+     * Initialize a restore operation from a migration backup.
+     *
+     * Creates a restore state file to track chunked progress.
+     *
+     * @param string $migration_id Migration ID to restore from.
+     * @param array  $options      Restore options: 'restore_database', 'restore_files'.
+     * @return array|WP_Error Restore state or error.
+     */
+    public function init_restore( $migration_id, $options = array() ) {
+        $migration_id = sanitize_file_name( $migration_id );
+        $zip_path     = $this->get_download_path( $migration_id );
+
+        if ( ! $zip_path ) {
+            return new WP_Error( 'not_found', 'Migration backup not found.' );
+        }
+
+        $info = $this->get_migration_info( $migration_id );
+
+        $defaults = array(
+            'restore_database' => true,
+            'restore_files'    => true,
+        );
+        $options = wp_parse_args( $options, $defaults );
+
+        $state = array(
+            'migration_id'       => $migration_id,
+            'phase'              => 'checkpoint',
+            'progress'           => 0,
+            'completed'          => false,
+            'error'              => null,
+            'options'            => $options,
+            'started_at'         => gmdate( 'c' ),
+            'checkpoint_id'      => null,
+            // Extract tracking
+            'extracted_files'    => 0,
+            'total_entries'      => 0,
+            'zip_index'          => 0,
+            'db_imported'        => false,
+        );
+
+        $working_dir = $this->migration_dir . '/' . $migration_id;
+        if ( ! $this->save_state( $migration_id, $state ) ) {
+            return new WP_Error( 'state_failed', 'Failed to save restore state.' );
+        }
+
+        return $state;
+    }
+
+    /**
+     * Process next chunk of a restore operation.
+     *
+     * @param string $migration_id The migration ID being restored.
+     * @return array Updated restore state.
+     */
+    public function process_restore_chunk( $migration_id ) {
+        $state = $this->load_state( $migration_id );
+        if ( ! $state ) {
+            return array( 'error' => 'Restore state not found', 'completed' => false );
+        }
+
+        if ( $state['completed'] || $state['error'] ) {
+            return $state;
+        }
+
+        $start_time = time();
+
+        switch ( $state['phase'] ) {
+            case 'checkpoint':
+                $this->restore_phase_checkpoint( $state );
+                $state['phase']    = 'database';
+                $state['progress'] = 10;
+                break;
+
+            case 'database':
+                if ( ! $state['options']['restore_database'] ) {
+                    $state['phase']    = 'files';
+                    $state['progress'] = 40;
+                    $state['db_imported'] = true;
+                } else {
+                    $done = $this->restore_phase_database( $state );
+                    if ( $done ) {
+                        $state['phase']    = 'files';
+                        $state['progress'] = 40;
+                    } else {
+                        $state['progress'] = 20;
+                    }
+                }
+                break;
+
+            case 'files':
+                if ( ! $state['options']['restore_files'] ) {
+                    $state['phase']     = 'complete';
+                    $state['progress']  = 100;
+                    $state['completed'] = true;
+                } else {
+                    $done = $this->restore_phase_files( $state, $start_time );
+                    if ( $done ) {
+                        $state['phase']     = 'complete';
+                        $state['progress']  = 100;
+                        $state['completed'] = true;
+                    } else {
+                        if ( $state['total_entries'] > 0 ) {
+                            $state['progress'] = 40 + (int) ( 60 * $state['extracted_files'] / $state['total_entries'] );
+                        }
+                    }
+                }
+                break;
+        }
+
+        $this->save_state( $migration_id, $state );
+        return $state;
+    }
+
+    /**
+     * Run a full restore in one go (for remote command use).
+     *
+     * @param string $migration_id Migration ID to restore.
+     * @param array  $options      Restore options.
+     * @return array Final restore state.
+     */
+    public function run_full_restore( $migration_id, $options = array() ) {
+        if ( function_exists( 'set_time_limit' ) ) {
+            @set_time_limit( 600 );
+        }
+
+        $state = $this->init_restore( $migration_id, $options );
+        if ( is_wp_error( $state ) ) {
+            return array( 'error' => $state->get_error_message(), 'completed' => false );
+        }
+
+        $this->chunk_timeout = 300;
+
+        while ( ! $state['completed'] && ! $state['error'] ) {
+            $state = $this->process_restore_chunk( $migration_id );
+        }
+
+        return $state;
+    }
+
+    /**
+     * Restore phase: Create a database checkpoint before restoring.
+     *
+     * @param array $state Restore state (by reference).
+     */
+    private function restore_phase_checkpoint( &$state ) {
+        $backup = new WP_Care_Backup();
+        $checkpoint_id = $backup->create_checkpoint( 'pre_migration_restore' );
+
+        if ( $checkpoint_id === false ) {
+            error_log( 'WP Care Migration: Failed to create pre-restore checkpoint, proceeding anyway' );
+        } else {
+            $state['checkpoint_id'] = $checkpoint_id;
+        }
+    }
+
+    /**
+     * Restore phase: Extract and import database.sql from the archive.
+     *
+     * @param array $state Restore state (by reference).
+     * @return bool True if complete.
+     */
+    private function restore_phase_database( &$state ) {
+        if ( $state['db_imported'] ) {
+            return true;
+        }
+
+        $zip_path = $this->get_download_path( $state['migration_id'] );
+        if ( ! $zip_path ) {
+            $state['error'] = 'Migration archive not found.';
+            return true;
+        }
+
+        // Extract database.sql to a temp file
+        $working_dir = dirname( $zip_path );
+        $sql_path    = $working_dir . '/restore_database.sql';
+
+        if ( ! file_exists( $sql_path ) ) {
+            if ( class_exists( 'ZipArchive' ) ) {
+                $zip = new ZipArchive();
+                if ( $zip->open( $zip_path ) !== true ) {
+                    $state['error'] = 'Failed to open migration archive.';
+                    return true;
+                }
+
+                if ( $zip->locateName( 'database.sql' ) === false ) {
+                    $zip->close();
+                    $state['db_imported'] = true;
+                    return true; // No database in archive, skip
+                }
+
+                $zip->extractTo( $working_dir, array( 'database.sql' ) );
+                $zip->close();
+
+                // Rename to avoid conflict with export temp files
+                if ( file_exists( $working_dir . '/database.sql' ) ) {
+                    rename( $working_dir . '/database.sql', $sql_path );
+                }
+            } else {
+                require_once ABSPATH . 'wp-admin/includes/class-pclzip.php';
+                $zip = new PclZip( $zip_path );
+                $result = $zip->extract( PCLZIP_OPT_BY_NAME, 'database.sql', PCLZIP_OPT_PATH, $working_dir );
+                if ( $result && file_exists( $working_dir . '/database.sql' ) ) {
+                    rename( $working_dir . '/database.sql', $sql_path );
+                }
+            }
+        }
+
+        if ( ! file_exists( $sql_path ) ) {
+            // No database.sql found, skip
+            $state['db_imported'] = true;
+            return true;
+        }
+
+        // Import using WP-CLI or PHP fallback (reuse backup class pattern)
+        $import_success = false;
+
+        if ( $this->check_wp_cli() ) {
+            $abspath = ABSPATH;
+            $command = sprintf(
+                'wp db import %s --path=%s 2>&1',
+                escapeshellarg( $sql_path ),
+                escapeshellarg( $abspath )
+            );
+            $output = shell_exec( $command );
+            $import_success = ( strpos( $output, 'Success' ) !== false || strpos( $output, 'Query OK' ) !== false );
+        }
+
+        if ( ! $import_success ) {
+            $import_success = $this->import_database_php( $sql_path );
+        }
+
+        // Cleanup temp SQL file
+        if ( file_exists( $sql_path ) ) {
+            unlink( $sql_path );
+        }
+
+        if ( ! $import_success ) {
+            $state['error'] = 'Database import failed. Your previous database has been preserved in checkpoint: ' . ( $state['checkpoint_id'] ? $state['checkpoint_id'] : 'none' );
+            return true;
+        }
+
+        $state['db_imported'] = true;
+        return true;
+    }
+
+    /**
+     * Import a SQL file using PHP (fallback when WP-CLI unavailable).
+     *
+     * @param string $filepath Path to SQL file.
+     * @return bool True on success.
+     */
+    private function import_database_php( $filepath ) {
+        global $wpdb;
+
+        if ( function_exists( 'set_time_limit' ) ) {
+            @set_time_limit( 300 );
+        }
+
+        $handle = fopen( $filepath, 'r' );
+        if ( ! $handle ) {
+            return false;
+        }
+
+        $statement     = '';
+        $error_count   = 0;
+        $success_count = 0;
+
+        while ( ( $line = fgets( $handle ) ) !== false ) {
+            $trimmed = trim( $line );
+            if ( empty( $trimmed ) || strpos( $trimmed, '--' ) === 0 ) {
+                continue;
+            }
+
+            $statement .= $line;
+
+            if ( substr( rtrim( $statement ), -1 ) === ';' ) {
+                $result = $wpdb->query( $statement );
+                if ( $result === false ) {
+                    $error_count++;
+                } else {
+                    $success_count++;
+                }
+                $statement = '';
+            }
+        }
+
+        fclose( $handle );
+
+        if ( $error_count > 0 ) {
+            error_log( sprintf( 'WP Care Migration: DB import completed with %d errors and %d successes', $error_count, $success_count ) );
+        }
+
+        return $success_count > $error_count;
+    }
+
+    /**
+     * Restore phase: Extract wp-content files from the archive.
+     *
+     * @param array $state      Restore state (by reference).
+     * @param int   $start_time Start timestamp for timeout tracking.
+     * @return bool True if complete.
+     */
+    private function restore_phase_files( &$state, $start_time ) {
+        $zip_path = $this->get_download_path( $state['migration_id'] );
+        if ( ! $zip_path ) {
+            $state['error'] = 'Migration archive not found.';
+            return true;
+        }
+
+        if ( ! class_exists( 'ZipArchive' ) ) {
+            // PclZip fallback: extract all at once (no chunking support)
+            return $this->restore_files_pclzip( $zip_path, $state );
+        }
+
+        $zip = new ZipArchive();
+        if ( $zip->open( $zip_path ) !== true ) {
+            $state['error'] = 'Failed to open migration archive.';
+            return true;
+        }
+
+        $state['total_entries'] = $zip->numFiles;
+
+        for ( $i = $state['zip_index']; $i < $zip->numFiles; $i++ ) {
+            if ( ( time() - $start_time ) >= $this->chunk_timeout ) {
+                $state['zip_index'] = $i;
+                $zip->close();
+                return false;
+            }
+
+            $entry_name = $zip->getNameIndex( $i );
+            if ( $entry_name === false ) {
+                continue;
+            }
+
+            // Only extract wp-content/ entries
+            if ( strpos( $entry_name, 'wp-content/' ) !== 0 ) {
+                continue;
+            }
+
+            // Get relative path within wp-content
+            $relative = substr( $entry_name, strlen( 'wp-content/' ) );
+            if ( empty( $relative ) || substr( $relative, -1 ) === '/' ) {
+                continue; // Skip directories (they'll be created automatically)
+            }
+
+            // Security: prevent path traversal
+            if ( strpos( $relative, '..' ) !== false ) {
+                continue;
+            }
+
+            $target_path = WP_CONTENT_DIR . '/' . $relative;
+            $target_dir  = dirname( $target_path );
+
+            // Create target directory if needed
+            if ( ! is_dir( $target_dir ) ) {
+                wp_mkdir_p( $target_dir );
+            }
+
+            // Extract the single file
+            $content = $zip->getFromIndex( $i );
+            if ( $content !== false ) {
+                file_put_contents( $target_path, $content );
+                $state['extracted_files']++;
+            }
+        }
+
+        $zip->close();
+        return true;
+    }
+
+    /**
+     * Restore files using PclZip fallback (non-chunked).
+     *
+     * @param string $zip_path Path to ZIP file.
+     * @param array  $state    Restore state (by reference).
+     * @return bool True when complete.
+     */
+    private function restore_files_pclzip( $zip_path, &$state ) {
+        require_once ABSPATH . 'wp-admin/includes/class-pclzip.php';
+
+        $zip = new PclZip( $zip_path );
+        $list = $zip->extract(
+            PCLZIP_OPT_PATH, WP_CONTENT_DIR,
+            PCLZIP_OPT_BY_PREG, '/^wp-content\//',
+            PCLZIP_OPT_REMOVE_PATH, 'wp-content'
+        );
+
+        if ( $list === 0 ) {
+            $state['error'] = 'File extraction failed: ' . $zip->errorInfo( true );
+            return true;
+        }
+
+        $state['extracted_files'] = is_array( $list ) ? count( $list ) : 0;
+        return true;
+    }
+
     /**
      * Cleanup old migrations exceeding max count.
      */

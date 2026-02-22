@@ -1,7 +1,7 @@
 /**
  * WP Care Migration AJAX Controller
  *
- * Handles chunked export process from the admin UI.
+ * Handles chunked export and restore processes from the admin UI.
  *
  * @package WP_Care_Connector
  * @since 1.2.0
@@ -12,6 +12,7 @@
     var WPCareMigration = {
         migrationId: null,
         isRunning: false,
+        mode: null, // 'export' or 'restore'
 
         /**
          * Collect export options from checkboxes.
@@ -35,6 +36,10 @@
             return options;
         },
 
+        // =================================================================
+        // Export
+        // =================================================================
+
         /**
          * Start a new migration export.
          */
@@ -44,7 +49,9 @@
             }
 
             this.isRunning = true;
+            this.mode = 'export';
             this.updateUI('running');
+            $('#wp-care-progress-title').text(wpCareMigration.strings.export_title || 'Export Progress');
 
             var self = this;
             var options = this.getOptions();
@@ -73,7 +80,7 @@
         },
 
         /**
-         * Process next chunk via AJAX.
+         * Process next export chunk via AJAX.
          */
         processChunk: function() {
             if (!this.isRunning || !this.migrationId) {
@@ -113,7 +120,6 @@
                     if (state.completed) {
                         self.showDownloadLink(state);
                     } else {
-                        // Continue processing
                         setTimeout(function() {
                             self.processChunk();
                         }, 100);
@@ -148,11 +154,124 @@
             }
 
             this.migrationId = null;
+            this.mode = null;
             this.updateUI('idle');
         },
 
+        // =================================================================
+        // Restore
+        // =================================================================
+
         /**
-         * Update progress display.
+         * Show the restore confirmation modal.
+         */
+        showRestoreModal: function(migrationId) {
+            this.migrationId = migrationId;
+            $('#wp-care-restore-modal').show();
+        },
+
+        /**
+         * Start the restore process after confirmation.
+         */
+        startRestore: function() {
+            if (this.isRunning || !this.migrationId) {
+                return;
+            }
+
+            $('#wp-care-restore-modal').hide();
+
+            this.isRunning = true;
+            this.mode = 'restore';
+            this.updateUI('running');
+            $('#wp-care-progress-title').text(wpCareMigration.strings.restore_title || 'Restore Progress');
+
+            var self = this;
+            var options = {
+                restore_database: $('#wp-care-restore-database').is(':checked'),
+                restore_files: $('#wp-care-restore-files').is(':checked')
+            };
+
+            $.ajax({
+                url: wpCareMigration.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'wp_care_restore_init',
+                    _wpnonce: wpCareMigration.nonce,
+                    migration_id: self.migrationId,
+                    options: options
+                },
+                success: function(response) {
+                    if (response.success && response.data && response.data.migration_id) {
+                        self.processRestoreChunk();
+                    } else {
+                        var msg = (response.data && response.data.message) ? response.data.message : wpCareMigration.strings.error;
+                        self.handleError(msg);
+                    }
+                },
+                error: function(xhr) {
+                    self.handleError(wpCareMigration.strings.error + ' (HTTP ' + xhr.status + ')');
+                }
+            });
+        },
+
+        /**
+         * Process next restore chunk via AJAX.
+         */
+        processRestoreChunk: function() {
+            if (!this.isRunning || !this.migrationId) {
+                return;
+            }
+
+            var self = this;
+
+            $.ajax({
+                url: wpCareMigration.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'wp_care_restore_chunk',
+                    _wpnonce: wpCareMigration.nonce,
+                    migration_id: self.migrationId
+                },
+                success: function(response) {
+                    if (!self.isRunning) {
+                        return;
+                    }
+
+                    if (!response.success) {
+                        var msg = (response.data && response.data.message) ? response.data.message : wpCareMigration.strings.error;
+                        self.handleError(msg);
+                        return;
+                    }
+
+                    var state = response.data;
+
+                    if (state.error) {
+                        self.handleError(state.error);
+                        return;
+                    }
+
+                    self.updateRestoreProgress(state);
+
+                    if (state.completed) {
+                        self.showRestoreComplete(state);
+                    } else {
+                        setTimeout(function() {
+                            self.processRestoreChunk();
+                        }, 100);
+                    }
+                },
+                error: function(xhr) {
+                    self.handleError(wpCareMigration.strings.error + ' (HTTP ' + xhr.status + ')');
+                }
+            });
+        },
+
+        // =================================================================
+        // UI Helpers
+        // =================================================================
+
+        /**
+         * Update export progress display.
          */
         updateProgress: function(state) {
             var progress = state.progress || 0;
@@ -182,10 +301,37 @@
         },
 
         /**
-         * Show download link after completion.
+         * Update restore progress display.
+         */
+        updateRestoreProgress: function(state) {
+            var progress = state.progress || 0;
+            var phase = state.phase || '';
+
+            $('.wp-care-progress-fill').css('width', progress + '%');
+
+            var phaseLabels = {
+                'checkpoint': wpCareMigration.strings.restore_checkpoint,
+                'database': wpCareMigration.strings.restore_db,
+                'files': wpCareMigration.strings.restore_files,
+                'complete': wpCareMigration.strings.restore_complete
+            };
+
+            var label = phaseLabels[phase] || phase;
+            $('.wp-care-progress-status').text(label + ' (' + progress + '%)');
+
+            var detail = '';
+            if (phase === 'files' && state.extracted_files > 0) {
+                detail = state.extracted_files + (state.total_entries ? ' / ' + state.total_entries : '') + ' files';
+            }
+            $('.wp-care-progress-detail').text(detail);
+        },
+
+        /**
+         * Show download link after export completion.
          */
         showDownloadLink: function(state) {
             this.isRunning = false;
+            this.mode = null;
 
             var downloadUrl = wpCareMigration.ajaxUrl +
                 '?action=wp_care_migration_download' +
@@ -204,11 +350,33 @@
         },
 
         /**
+         * Show restore complete message.
+         */
+        showRestoreComplete: function(state) {
+            this.isRunning = false;
+            this.mode = null;
+
+            var checkpointMsg = '';
+            if (state.checkpoint_id) {
+                checkpointMsg = wpCareMigration.strings.restore_checkpoint_note + ' ' + state.checkpoint_id;
+            }
+            $('#wp-care-restore-checkpoint').text(checkpointMsg);
+
+            $('#wp-care-migration-progress').hide();
+            $('#wp-care-restore-complete').show();
+            $('#wp-care-migration-cancel').hide();
+            $('#wp-care-migration-start').prop('disabled', false);
+
+            $('.wp-care-migration-checkboxes input').prop('disabled', false);
+        },
+
+        /**
          * Handle errors.
          */
         handleError: function(message) {
             this.isRunning = false;
             this.migrationId = null;
+            this.mode = null;
 
             $('#wp-care-migration-error-message').text(message);
             $('#wp-care-migration-error').show();
@@ -226,22 +394,24 @@
                 $('#wp-care-migration-cancel').show();
                 $('#wp-care-migration-progress').show();
                 $('#wp-care-migration-download').hide();
+                $('#wp-care-restore-complete').hide();
                 $('#wp-care-migration-error').hide();
                 $('.wp-care-progress-fill').css('width', '0%');
                 $('.wp-care-progress-status').text(wpCareMigration.strings.initializing);
                 $('.wp-care-progress-detail').text('');
-                // Disable option checkboxes during export
                 $('.wp-care-migration-checkboxes input').prop('disabled', true);
+                $('.wp-care-restore-btn').prop('disabled', true);
             } else {
                 $('#wp-care-migration-start').prop('disabled', false);
                 $('#wp-care-migration-cancel').hide();
-                // Re-enable option checkboxes
                 $('.wp-care-migration-checkboxes input').prop('disabled', false);
+                $('.wp-care-restore-btn').prop('disabled', false);
             }
         }
     };
 
     $(document).ready(function() {
+        // Export
         $('#wp-care-migration-start').on('click', function(e) {
             e.preventDefault();
             WPCareMigration.startExport();
@@ -250,6 +420,26 @@
         $('#wp-care-migration-cancel').on('click', function(e) {
             e.preventDefault();
             WPCareMigration.cancelExport();
+        });
+
+        // Restore - open modal
+        $(document).on('click', '.wp-care-restore-btn', function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            WPCareMigration.showRestoreModal(id);
+        });
+
+        // Restore - confirm
+        $('#wp-care-restore-confirm').on('click', function(e) {
+            e.preventDefault();
+            WPCareMigration.startRestore();
+        });
+
+        // Restore - cancel modal
+        $('#wp-care-restore-cancel-modal').on('click', function(e) {
+            e.preventDefault();
+            $('#wp-care-restore-modal').hide();
+            WPCareMigration.migrationId = null;
         });
     });
 })(jQuery);

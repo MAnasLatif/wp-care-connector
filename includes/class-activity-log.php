@@ -97,6 +97,8 @@ class WP_Care_Activity_Log {
             'migration_created'    => __( 'Migration Backup Created', 'wp-care-connector' ),
             'migration_deleted'    => __( 'Migration Backup Deleted', 'wp-care-connector' ),
             'migration_downloaded' => __( 'Migration Backup Downloaded', 'wp-care-connector' ),
+            'migration_uploaded'   => __( 'Migration Backup Uploaded', 'wp-care-connector' ),
+            'migration_restored'   => __( 'Site Restored from Migration', 'wp-care-connector' ),
         );
 
         return isset( $labels[ $action ] ) ? $labels[ $action ] : sanitize_text_field( $action );

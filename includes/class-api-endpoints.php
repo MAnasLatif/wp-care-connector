@@ -173,6 +173,7 @@ class WP_Care_API_Endpoints {
         $this->register_command('list_migration_backups', [$this, 'cmd_list_migration_backups']);
         $this->register_command('delete_migration_backup', [$this, 'cmd_delete_migration_backup']);
         $this->register_command('get_migration_status', [$this, 'cmd_get_migration_status']);
+        $this->register_command('restore_migration_backup', [$this, 'cmd_restore_migration_backup']);
 
         // Store instance for singleton access
         if (self::$instance === null) {
@@ -950,6 +951,43 @@ class WP_Care_API_Endpoints {
         }
 
         return ['success' => true, 'migration' => $info];
+    }
+
+    /**
+     * Command: restore_migration_backup
+     *
+     * Restores a site from a migration backup (database + files).
+     * Runs all phases in a single request. Creates a DB checkpoint first.
+     *
+     * @param array $args Command arguments containing 'migration_id' and optional 'options'.
+     * @return array Restore result.
+     */
+    public function cmd_restore_migration_backup($args) {
+        if (empty($args['migration_id'])) {
+            return ['success' => false, 'error' => 'Migration ID is required'];
+        }
+
+        $migration = new WP_Care_Migration();
+        $migration_id = sanitize_file_name($args['migration_id']);
+        $options = isset($args['options']) ? $args['options'] : [];
+
+        $result = $migration->run_full_restore($migration_id, $options);
+
+        if (isset($result['error']) && $result['error']) {
+            return ['success' => false, 'error' => $result['error']];
+        }
+
+        WP_Care_Activity_Log::log('migration_restored', [
+            'migration_id'  => $migration_id,
+            'checkpoint_id' => isset($result['checkpoint_id']) ? $result['checkpoint_id'] : '',
+        ]);
+
+        return [
+            'success'       => true,
+            'migration_id'  => $migration_id,
+            'checkpoint_id' => isset($result['checkpoint_id']) ? $result['checkpoint_id'] : null,
+            'message'       => 'Site restored successfully from migration backup',
+        ];
     }
 
     /**
