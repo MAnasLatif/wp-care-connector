@@ -92,8 +92,11 @@ class WP_Care_Activity_Log {
             'backup_created'     => __( 'Backup Created', 'wp-care-connector' ),
             'cache_cleared'      => __( 'Cache Cleared', 'wp-care-connector' ),
             'plugin_updated'     => __( 'Plugin Updated', 'wp-care-connector' ),
-            'support_submitted'  => __( 'Support Request Submitted', 'wp-care-connector' ),
-            'settings_saved'     => __( 'Settings Saved', 'wp-care-connector' ),
+            'support_submitted'    => __( 'Support Request Submitted', 'wp-care-connector' ),
+            'settings_saved'       => __( 'Settings Saved', 'wp-care-connector' ),
+            'migration_created'    => __( 'Migration Backup Created', 'wp-care-connector' ),
+            'migration_deleted'    => __( 'Migration Backup Deleted', 'wp-care-connector' ),
+            'migration_downloaded' => __( 'Migration Backup Downloaded', 'wp-care-connector' ),
         );
 
         return isset( $labels[ $action ] ) ? $labels[ $action ] : sanitize_text_field( $action );

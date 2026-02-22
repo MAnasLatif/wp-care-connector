@@ -168,6 +168,12 @@ class WP_Care_API_Endpoints {
         $this->register_command('list_checkpoints', [$this, 'cmd_list_checkpoints']);
         $this->register_command('delete_checkpoint', [$this, 'cmd_delete_checkpoint']);
 
+        // Register migration commands
+        $this->register_command('create_migration_backup', [$this, 'cmd_create_migration_backup']);
+        $this->register_command('list_migration_backups', [$this, 'cmd_list_migration_backups']);
+        $this->register_command('delete_migration_backup', [$this, 'cmd_delete_migration_backup']);
+        $this->register_command('get_migration_status', [$this, 'cmd_get_migration_status']);
+
         // Store instance for singleton access
         if (self::$instance === null) {
             self::$instance = $this;
@@ -842,6 +848,108 @@ class WP_Care_API_Endpoints {
             'checkpoint_id' => $checkpoint_id,
             'message'       => 'Checkpoint deleted',
         ];
+    }
+
+    /**
+     * Command: create_migration_backup
+     *
+     * Creates a full site migration backup (database + files).
+     * Runs all phases in a single request. May take several minutes for large sites.
+     *
+     * @param array $args Command arguments with optional 'options' array.
+     * @return array Migration details.
+     */
+    public function cmd_create_migration_backup($args) {
+        $migration = new WP_Care_Migration();
+        $options = isset($args['options']) ? $args['options'] : [];
+        $result = $migration->run_full_export($options);
+
+        if (isset($result['error']) && $result['error']) {
+            return ['success' => false, 'error' => $result['error']];
+        }
+
+        WP_Care_Activity_Log::log('migration_created', [
+            'migration_id' => $result['migration_id'],
+            'size'         => isset($result['archive_size_human']) ? $result['archive_size_human'] : '',
+        ]);
+
+        return [
+            'success'            => true,
+            'migration_id'       => $result['migration_id'],
+            'archive_size'       => isset($result['archive_size']) ? $result['archive_size'] : 0,
+            'archive_size_human' => isset($result['archive_size_human']) ? $result['archive_size_human'] : '',
+            'created_at'         => $result['created_at'],
+        ];
+    }
+
+    /**
+     * Command: list_migration_backups
+     *
+     * Lists all available migration backups.
+     *
+     * @param array $args Command arguments (unused).
+     * @return array List of migrations.
+     */
+    public function cmd_list_migration_backups($args) {
+        $migration  = new WP_Care_Migration();
+        $migrations = $migration->list_migrations();
+
+        return [
+            'success'    => true,
+            'migrations' => $migrations,
+            'count'      => count($migrations),
+        ];
+    }
+
+    /**
+     * Command: delete_migration_backup
+     *
+     * Deletes a migration backup.
+     *
+     * @param array $args Command arguments containing 'migration_id'.
+     * @return array Success status.
+     */
+    public function cmd_delete_migration_backup($args) {
+        if (empty($args['migration_id'])) {
+            return ['success' => false, 'error' => 'Migration ID is required'];
+        }
+
+        $migration = new WP_Care_Migration();
+        $deleted = $migration->delete_migration(sanitize_file_name($args['migration_id']));
+
+        if ($deleted) {
+            WP_Care_Activity_Log::log('migration_deleted', [
+                'migration_id' => $args['migration_id'],
+            ]);
+        }
+
+        return [
+            'success' => $deleted,
+            'message' => $deleted ? 'Migration backup deleted' : 'Migration not found',
+        ];
+    }
+
+    /**
+     * Command: get_migration_status
+     *
+     * Returns the current state/metadata of a migration.
+     *
+     * @param array $args Command arguments containing 'migration_id'.
+     * @return array Migration info.
+     */
+    public function cmd_get_migration_status($args) {
+        if (empty($args['migration_id'])) {
+            return ['success' => false, 'error' => 'Migration ID is required'];
+        }
+
+        $migration = new WP_Care_Migration();
+        $info = $migration->get_migration_info(sanitize_file_name($args['migration_id']));
+
+        if (!$info) {
+            return ['success' => false, 'error' => 'Migration not found'];
+        }
+
+        return ['success' => true, 'migration' => $info];
     }
 
     /**

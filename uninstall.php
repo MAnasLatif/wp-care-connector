@@ -69,6 +69,23 @@ if (is_dir($backup_dir)) {
     }
 }
 
+// Clean up migration directory
+$migration_dir = WP_CONTENT_DIR . '/wp-care-migrations';
+if (is_dir($migration_dir)) {
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($migration_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($iterator as $item) {
+        if ($item->isDir()) {
+            rmdir($item->getRealPath());
+        } else {
+            unlink($item->getRealPath());
+        }
+    }
+    rmdir($migration_dir);
+}
+
 // Clean up any transients
 global $wpdb;
 $wpdb->query(

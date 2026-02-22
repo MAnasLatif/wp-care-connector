@@ -27,6 +27,7 @@ define('WP_CARE_PLUGIN_FILE', __FILE__);
 // Include required files
 require_once WP_CARE_PLUGIN_DIR . 'includes/class-security.php';
 require_once WP_CARE_PLUGIN_DIR . 'includes/class-backup.php';
+require_once WP_CARE_PLUGIN_DIR . 'includes/class-migration.php';
 require_once WP_CARE_PLUGIN_DIR . 'includes/class-site-mapper.php';
 require_once WP_CARE_PLUGIN_DIR . 'includes/class-temp-login.php';
 require_once WP_CARE_PLUGIN_DIR . 'includes/class-api-endpoints.php';
@@ -68,6 +69,14 @@ function wp_care_activate() {
 
         // Also create index.php for additional protection
         file_put_contents($backup_dir . '/index.php', '<?php // Silence is golden.');
+    }
+
+    // Create migration directory with protection
+    $migration_dir = WP_CONTENT_DIR . '/wp-care-migrations';
+    if ( ! file_exists( $migration_dir ) ) {
+        wp_mkdir_p( $migration_dir );
+        file_put_contents( $migration_dir . '/.htaccess', "# Deny access to migration files\nOrder deny,allow\nDeny from all\n" );
+        file_put_contents( $migration_dir . '/index.php', '<?php // Silence is golden.' );
     }
 
     // Flush rewrite rules for REST API endpoints

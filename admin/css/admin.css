@@ -271,6 +271,58 @@
    Responsive Adjustments
    ========================================================================== */
 
+/* ==========================================================================
+   Migration Page Styles
+   ========================================================================== */
+
+.wp-care-migration-checkboxes label {
+    display: block;
+    padding: 5px 0;
+    cursor: pointer;
+}
+
+.wp-care-migration-checkboxes label:hover {
+    color: #2271b1;
+}
+
+.wp-care-migration-checkboxes h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+/* Progress Bar */
+.wp-care-progress-bar {
+    width: 100%;
+    height: 24px;
+    background: #f0f0f0;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 15px 0;
+}
+
+.wp-care-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2271b1, #135e96);
+    border-radius: 12px;
+    transition: width 0.3s ease;
+}
+
+.wp-care-progress-status {
+    font-weight: 500;
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.wp-care-progress-detail {
+    color: #666;
+    font-size: 12px;
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
 @media screen and (max-width: 782px) {
     .wp-care-status-container {
         grid-template-columns: 1fr;

@@ -58,6 +58,11 @@ class WP_Care_Admin {
         add_action( 'admin_post_wp_care_clear_cache', array( $this, 'handle_clear_cache' ) );
         add_action( 'admin_post_wp_care_create_backup', array( $this, 'handle_create_backup' ) );
         add_action( 'admin_post_wp_care_create_temp_login', array( $this, 'handle_create_temp_login' ) );
+        add_action( 'admin_post_wp_care_delete_migration', array( $this, 'handle_delete_migration' ) );
+        add_action( 'wp_ajax_wp_care_migration_init', array( $this, 'ajax_migration_init' ) );
+        add_action( 'wp_ajax_wp_care_migration_chunk', array( $this, 'ajax_migration_chunk' ) );
+        add_action( 'wp_ajax_wp_care_migration_cancel', array( $this, 'ajax_migration_cancel' ) );
+        add_action( 'wp_ajax_wp_care_migration_download', array( $this, 'ajax_migration_download' ) );
         add_action( 'admin_notices', array( $this, 'show_notices' ) );
         add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
     }
@@ -100,6 +105,16 @@ class WP_Care_Admin {
             'manage_options',
             $this->menu_slug . '-tools',
             array( $this, 'render_tools_page' )
+        );
+
+        // Submenu - Site Migration page
+        add_submenu_page(
+            $this->menu_slug,
+            __( 'Site Migration', 'wp-care-connector' ),
+            __( 'Site Migration', 'wp-care-connector' ),
+            'manage_options',
+            $this->menu_slug . '-migration',
+            array( $this, 'render_migration_page' )
         );
 
         // Submenu - Health page
@@ -157,6 +172,31 @@ class WP_Care_Admin {
             array(),
             WP_CARE_VERSION
         );
+
+        // Enqueue migration JS only on the migration page
+        if ( strpos( $hook_suffix, $this->menu_slug . '-migration' ) !== false ) {
+            wp_enqueue_script(
+                'wp-care-migration',
+                WP_CARE_PLUGIN_URL . 'admin/js/migration.js',
+                array( 'jquery' ),
+                WP_CARE_VERSION,
+                true
+            );
+            wp_localize_script( 'wp-care-migration', 'wpCareMigration', array(
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce'   => wp_create_nonce( 'wp_care_migration' ),
+                'strings' => array(
+                    'initializing'   => __( 'Initializing export...', 'wp-care-connector' ),
+                    'exporting_db'   => __( 'Exporting database...', 'wp-care-connector' ),
+                    'scanning'       => __( 'Scanning files...', 'wp-care-connector' ),
+                    'archiving'      => __( 'Archiving files...', 'wp-care-connector' ),
+                    'finalizing'     => __( 'Finalizing backup...', 'wp-care-connector' ),
+                    'complete'       => __( 'Migration backup complete!', 'wp-care-connector' ),
+                    'error'          => __( 'Export failed', 'wp-care-connector' ),
+                    'confirm_cancel' => __( 'Are you sure you want to cancel the export?', 'wp-care-connector' ),
+                ),
+            ) );
+        }
     }
 
     /**
@@ -681,6 +721,19 @@ class WP_Care_Admin {
                     <?php endif; ?>
                 </div>
 
+                <!-- Site Migration -->
+                <div class="wp-care-tool-card card" style="padding: 20px;">
+                    <h2 style="margin-top: 0;">
+                        <span class="dashicons dashicons-migrate" style="color: #2271b1;"></span>
+                        <?php esc_html_e( 'Site Migration', 'wp-care-connector' ); ?>
+                    </h2>
+                    <p><?php esc_html_e( 'Create a full site backup (database + files) for migration to a new host or domain.', 'wp-care-connector' ); ?></p>
+                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_slug . '-migration' ) ); ?>" class="button button-primary">
+                        <span class="dashicons dashicons-migrate" style="vertical-align: middle;"></span>
+                        <?php esc_html_e( 'Go to Migration', 'wp-care-connector' ); ?>
+                    </a>
+                </div>
+
                 <!-- Site Health Export -->
                 <div class="wp-care-tool-card card" style="padding: 20px;">
                     <h2 style="margin-top: 0;">
@@ -913,6 +966,173 @@ class WP_Care_Admin {
             </div>
         </div>
         <?php
+    }
+
+    /**
+     * Render the site migration page.
+     *
+     * @return void
+     */
+    public function render_migration_page() {
+        $migration  = new WP_Care_Migration();
+        $migrations = $migration->list_migrations();
+        include WP_CARE_PLUGIN_DIR . 'admin/views/migration-page.php';
+    }
+
+    /**
+     * AJAX handler: Initialize migration export.
+     *
+     * @return void
+     */
+    public function ajax_migration_init() {
+        check_ajax_referer( 'wp_care_migration' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Permission denied.', 'wp-care-connector' ) ), 403 );
+        }
+
+        $options = isset( $_POST['options'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['options'] ) ) : array();
+
+        // Convert string "true"/"false" to boolean
+        foreach ( $options as $key => $value ) {
+            $options[ $key ] = filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+        }
+
+        $migration = new WP_Care_Migration();
+        $state = $migration->init_export( $options );
+
+        if ( ! $state ) {
+            wp_send_json_error( array( 'message' => __( 'Failed to initialize migration. Check directory permissions.', 'wp-care-connector' ) ) );
+        }
+
+        wp_send_json_success( $state );
+    }
+
+    /**
+     * AJAX handler: Process migration chunk.
+     *
+     * @return void
+     */
+    public function ajax_migration_chunk() {
+        check_ajax_referer( 'wp_care_migration' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Permission denied.', 'wp-care-connector' ) ), 403 );
+        }
+
+        $migration_id = isset( $_POST['migration_id'] ) ? sanitize_file_name( wp_unslash( $_POST['migration_id'] ) ) : '';
+
+        if ( empty( $migration_id ) ) {
+            wp_send_json_error( array( 'message' => __( 'Migration ID is required.', 'wp-care-connector' ) ) );
+        }
+
+        $migration = new WP_Care_Migration();
+        $state = $migration->process_chunk( $migration_id );
+
+        if ( $state['completed'] ) {
+            WP_Care_Activity_Log::log( 'migration_created', array(
+                'migration_id' => $migration_id,
+                'size'         => isset( $state['archive_size_human'] ) ? $state['archive_size_human'] : '',
+            ) );
+        }
+
+        wp_send_json_success( $state );
+    }
+
+    /**
+     * AJAX handler: Cancel migration export.
+     *
+     * @return void
+     */
+    public function ajax_migration_cancel() {
+        check_ajax_referer( 'wp_care_migration' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Permission denied.', 'wp-care-connector' ) ), 403 );
+        }
+
+        $migration_id = isset( $_POST['migration_id'] ) ? sanitize_file_name( wp_unslash( $_POST['migration_id'] ) ) : '';
+
+        if ( ! empty( $migration_id ) ) {
+            $migration = new WP_Care_Migration();
+            $migration->delete_migration( $migration_id );
+        }
+
+        wp_send_json_success( array( 'message' => __( 'Export cancelled.', 'wp-care-connector' ) ) );
+    }
+
+    /**
+     * AJAX handler: Download migration file.
+     *
+     * @return void
+     */
+    public function ajax_migration_download() {
+        check_ajax_referer( 'wp_care_migration_download', '_wpnonce', false ) || check_ajax_referer( 'wp_care_migration' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Permission denied.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        $migration_id = isset( $_GET['id'] ) ? sanitize_file_name( wp_unslash( $_GET['id'] ) ) : '';
+
+        if ( empty( $migration_id ) ) {
+            wp_die( esc_html__( 'Migration ID is required.', 'wp-care-connector' ) );
+        }
+
+        $migration = new WP_Care_Migration();
+        $file_path = $migration->get_download_path( $migration_id );
+
+        if ( ! $file_path ) {
+            wp_die( esc_html__( 'Migration file not found.', 'wp-care-connector' ) );
+        }
+
+        WP_Care_Activity_Log::log( 'migration_downloaded', array( 'migration_id' => $migration_id ) );
+
+        $info     = $migration->get_migration_info( $migration_id );
+        $filename = sanitize_file_name(
+            wp_parse_url( get_site_url(), PHP_URL_HOST ) . '-migration-' . gmdate( 'Y-m-d' ) . '.zip'
+        );
+
+        header( 'Content-Type: application/zip' );
+        header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+        header( 'Content-Length: ' . filesize( $file_path ) );
+        header( 'Pragma: no-cache' );
+        header( 'Expires: 0' );
+
+        readfile( $file_path );
+        exit;
+    }
+
+    /**
+     * Handle migration deletion.
+     *
+     * @return void
+     */
+    public function handle_delete_migration() {
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'wp_care_delete_migration' ) ) {
+            wp_die( esc_html__( 'Security check failed.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Permission denied.', 'wp-care-connector' ), '', array( 'response' => 403 ) );
+        }
+
+        $migration_id = isset( $_POST['migration_id'] ) ? sanitize_file_name( wp_unslash( $_POST['migration_id'] ) ) : '';
+
+        if ( ! empty( $migration_id ) ) {
+            $migration = new WP_Care_Migration();
+            $deleted = $migration->delete_migration( $migration_id );
+
+            if ( $deleted ) {
+                WP_Care_Activity_Log::log( 'migration_deleted', array( 'migration_id' => $migration_id ) );
+                $this->redirect_with_notice( 'success', __( 'Migration backup deleted.', 'wp-care-connector' ) );
+            } else {
+                $this->redirect_with_notice( 'error', __( 'Migration backup not found.', 'wp-care-connector' ) );
+            }
+        }
+
+        wp_safe_redirect( admin_url( 'admin.php?page=' . $this->menu_slug . '-migration' ) );
+        exit;
     }
 
     /**
