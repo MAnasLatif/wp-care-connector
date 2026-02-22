@@ -13,10 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <div class="wrap wp-care-wrap">
-    <h1 class="wp-heading-inline"><?php esc_html_e( 'Site Migration', 'wp-care-connector' ); ?></h1>
-    <button type="button" id="wp-care-btn-create" class="page-title-action"><?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?></button>
-    <button type="button" id="wp-care-btn-upload" class="page-title-action"><?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?></button>
-    <hr class="wp-header-end">
+    <h1><?php esc_html_e( 'Site Migration', 'wp-care-connector' ); ?></h1>
 
     <!-- Create Migration Panel (hidden by default) -->
     <div id="wp-care-panel-create" class="card wp-care-panel" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
@@ -58,7 +55,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             <?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?>
             <button type="button" class="wp-care-panel-close" style="float: right; background: none; border: none; cursor: pointer; font-size: 20px; color: #787c82; line-height: 1;">&times;</button>
         </h2>
-        <p><?php esc_html_e( 'Upload a .zip migration file previously exported from this or another site.', 'wp-care-connector' ); ?></p>
+        <p><?php esc_html_e( 'Upload a .zip migration file from this or another site.', 'wp-care-connector' ); ?></p>
 
         <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
             <?php wp_nonce_field( 'wp_care_upload_migration', '_wpnonce' ); ?>
@@ -85,7 +82,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     <!-- Progress Section (shown during export/restore, hides everything else) -->
     <div id="wp-care-migration-progress" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
-        <h2 id="wp-care-progress-title" style="margin-top: 0;"><?php esc_html_e( 'Export Progress', 'wp-care-connector' ); ?></h2>
+        <h2 id="wp-care-progress-title" style="margin-top: 0;"><?php esc_html_e( 'Migration Progress', 'wp-care-connector' ); ?></h2>
         <div class="wp-care-progress-bar">
             <div class="wp-care-progress-fill" style="width: 0%;"></div>
         </div>
@@ -100,7 +97,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <div id="wp-care-migration-download" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
         <h2 style="margin-top: 0; color: #00a32a;">
             <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
-            <?php esc_html_e( 'Migration Complete!', 'wp-care-connector' ); ?>
+            <?php esc_html_e( 'Migration Complete', 'wp-care-connector' ); ?>
         </h2>
         <p id="wp-care-migration-filesize"></p>
         <a href="#" id="wp-care-migration-download-link" class="button button-primary">
@@ -113,7 +110,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <div id="wp-care-restore-complete" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
         <h2 style="margin-top: 0; color: #00a32a;">
             <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
-            <?php esc_html_e( 'Site Restored Successfully!', 'wp-care-connector' ); ?>
+            <?php esc_html_e( 'Restore Complete', 'wp-care-connector' ); ?>
         </h2>
         <p><?php esc_html_e( 'Your site has been restored from the migration.', 'wp-care-connector' ); ?></p>
         <p id="wp-care-restore-checkpoint" style="color: #666;"></p>
@@ -125,7 +122,14 @@ if ( ! defined( 'ABSPATH' ) ) {
     </div>
 
     <!-- Available Migrations Table -->
-    <div id="wp-care-migrations-table" style="max-width: 800px; margin-top: 20px;">
+    <div id="wp-care-migrations-table">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="wp-heading-inline"><?php esc_html_e( 'Available Migrations', 'wp-care-connector' ); ?></h2>
+            <div class="">
+                <button type="button" id="wp-care-btn-create" class="page-title-action"><?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?></button>
+                <button type="button" id="wp-care-btn-upload" class="page-title-action"><?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?></button>
+            </div>
+        </div>
         <?php if ( ! empty( $migrations ) ) : ?>
         <table class="widefat striped">
             <thead>
@@ -133,7 +137,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <th><?php esc_html_e( 'Date', 'wp-care-connector' ); ?></th>
                     <th><?php esc_html_e( 'Source', 'wp-care-connector' ); ?></th>
                     <th><?php esc_html_e( 'Size', 'wp-care-connector' ); ?></th>
-                    <th><?php esc_html_e( 'Actions', 'wp-care-connector' ); ?></th>
+                    <th style=" text-align: center;"><?php esc_html_e( 'Actions', 'wp-care-connector' ); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -156,7 +160,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                         <?php endif; ?>
                     </td>
                     <td><?php echo esc_html( $m['archive_size_human'] ); ?></td>
-                    <td>
+                    <td style="text-align: center;">
                         <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-ajax.php?action=wp_care_migration_download&id=' . urlencode( $m['id'] ) ), 'wp_care_migration_download' ) ); ?>" class="button button-small">
                             <?php esc_html_e( 'Download', 'wp-care-connector' ); ?>
                         </a>

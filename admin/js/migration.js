@@ -50,17 +50,22 @@
             // Close all panels
             $('.wp-care-panel').hide();
 
-            // Toggle target
             if (!isVisible) {
+                // Hide table, show panel
+                $('#wp-care-migrations-table').hide();
                 $panel.show();
+            } else {
+                // Panel was open, now closed — show table
+                $('#wp-care-migrations-table').show();
             }
         },
 
         /**
-         * Close all panels.
+         * Close all panels and show table.
          */
         closePanels: function() {
             $('.wp-care-panel').hide();
+            $('#wp-care-migrations-table').show();
         },
 
         // =================================================================
@@ -78,7 +83,7 @@
             this.isRunning = true;
             this.mode = 'export';
             this.updateUI('running');
-            $('#wp-care-progress-title').text(wpCareMigration.strings.export_title || 'Export Progress');
+            $('#wp-care-progress-title').text(wpCareMigration.strings.export_title || 'Migration Progress');
 
             var self = this;
             var options = this.getOptions();
@@ -373,7 +378,6 @@
             $('#wp-care-migration-progress').hide();
             $('#wp-care-migration-download').show();
             $('#wp-care-migrations-table').show();
-            $('#wp-care-btn-create, #wp-care-btn-upload').show();
         },
 
         /**
@@ -392,7 +396,6 @@
             $('#wp-care-migration-progress').hide();
             $('#wp-care-restore-complete').show();
             $('#wp-care-migrations-table').show();
-            $('#wp-care-btn-create, #wp-care-btn-upload').show();
 
             $('.wp-care-migration-checkboxes input').prop('disabled', false);
         },
@@ -423,7 +426,6 @@
                 $('#wp-care-migration-download').hide();
                 $('#wp-care-restore-complete').hide();
                 $('#wp-care-migration-error').hide();
-                $('#wp-care-btn-create, #wp-care-btn-upload').hide();
 
                 // Show progress
                 $('#wp-care-migration-progress').show();
@@ -435,9 +437,8 @@
                 $('.wp-care-migration-checkboxes input').prop('disabled', true);
                 $('.wp-care-restore-btn').prop('disabled', true);
             } else {
-                // Show table and action buttons
+                // Show table (buttons are inside it)
                 $('#wp-care-migrations-table').show();
-                $('#wp-care-btn-create, #wp-care-btn-upload').show();
 
                 // Enable inputs
                 $('.wp-care-migration-checkboxes input').prop('disabled', false);
@@ -458,10 +459,10 @@
             WPCareMigration.togglePanel('wp-care-panel-upload');
         });
 
-        // Panel close buttons
+        // Panel close buttons — close panel, show table
         $(document).on('click', '.wp-care-panel-close', function(e) {
             e.preventDefault();
-            $(this).closest('.wp-care-panel').hide();
+            WPCareMigration.closePanels();
         });
 
         // Export
