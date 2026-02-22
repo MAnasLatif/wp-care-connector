@@ -119,7 +119,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     </div>
 
     <!-- Progress Section (shown during export/restore, hides everything else) -->
-    <div id="wp-care-migration-progress" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
+    <div id="wp-care-migration-progress" class="card" style="padding: 20px; margin-top: 20px; display: none;">
         <h2 id="wp-care-progress-title" style="margin-top: 0;"><?php esc_html_e( 'Migration Progress', 'wp-care-connector' ); ?></h2>
         <div class="wp-care-progress-bar">
             <div class="wp-care-progress-fill" style="width: 0%;"></div>
@@ -132,7 +132,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     </div>
 
     <!-- Download Section (shown after export complete) -->
-    <div id="wp-care-migration-download" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
+    <div id="wp-care-migration-download" class="card" style="padding: 20px; margin-top: 20px; display: none;">
         <h2 style="margin-top: 0; color: #00a32a;">
             <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
             <?php esc_html_e( 'Migration Complete', 'wp-care-connector' ); ?>
@@ -145,7 +145,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     </div>
 
     <!-- Restore Complete Section -->
-    <div id="wp-care-restore-complete" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
+    <div id="wp-care-restore-complete" class="card" style="padding: 20px; margin-top: 20px; display: none;">
         <h2 style="margin-top: 0; color: #00a32a;">
             <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
             <?php esc_html_e( 'Restore Complete', 'wp-care-connector' ); ?>
@@ -155,7 +155,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     </div>
 
     <!-- Error Section -->
-    <div id="wp-care-migration-error" class="notice notice-error" style="max-width: 800px; margin-top: 20px; display: none;">
+    <div id="wp-care-migration-error" class="notice notice-error" style="margin-top: 20px; display: none;">
         <p id="wp-care-migration-error-message"></p>
     </div>
 
