@@ -15,11 +15,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 <div class="wrap wp-care-wrap">
     <h1><?php esc_html_e( 'Site Migration', 'wp-care-connector' ); ?></h1>
 
+    <!-- Action Cards -->
+    <div id="wp-care-action-cards" class="wp-care-action-cards">
+        <div class="wp-care-action-card" id="wp-care-btn-create">
+            <div class="wp-care-action-card-header">
+                <span class="dashicons dashicons-migrate"></span>
+                <?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?>
+            </div>
+            <div class="wp-care-action-card-body">
+                <p><?php esc_html_e( 'Export your site\'s database, themes, plugins and uploads.', 'wp-care-connector' ); ?></p>
+            </div>
+        </div>
+        <div class="wp-care-action-card" id="wp-care-btn-upload">
+            <div class="wp-care-action-card-header">
+                <span class="dashicons dashicons-upload"></span>
+                <?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?>
+            </div>
+            <div class="wp-care-action-card-body">
+                <p><?php esc_html_e( 'Upload a .zip migration file from another site.', 'wp-care-connector' ); ?></p>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Migration Panel (hidden by default) -->
-    <div id="wp-care-panel-create" class="card wp-care-panel" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
-        <h2 style="margin-top: 0;">
+    <div id="wp-care-panel-create" class="card wp-care-panel" style="display: none;">
+        <h2>
             <?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?>
-            <button type="button" class="wp-care-panel-close" style="float: right; background: none; border: none; cursor: pointer; font-size: 20px; color: #787c82; line-height: 1;">&times;</button>
+            <button type="button" class="wp-care-panel-close">&times;</button>
         </h2>
 
         <div class="wp-care-migration-checkboxes">
@@ -50,10 +72,10 @@ if ( ! defined( 'ABSPATH' ) ) {
     </div>
 
     <!-- Upload Migration Panel (hidden by default) -->
-    <div id="wp-care-panel-upload" class="card wp-care-panel" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
-        <h2 style="margin-top: 0;">
+    <div id="wp-care-panel-upload" class="card wp-care-panel" style="display: none;">
+        <h2>
             <?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?>
-            <button type="button" class="wp-care-panel-close" style="float: right; background: none; border: none; cursor: pointer; font-size: 20px; color: #787c82; line-height: 1;">&times;</button>
+            <button type="button" class="wp-care-panel-close">&times;</button>
         </h2>
         <p><?php esc_html_e( 'Upload a .zip migration file from this or another site.', 'wp-care-connector' ); ?></p>
 
@@ -123,13 +145,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     <!-- Available Migrations Table -->
     <div id="wp-care-migrations-table">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 class="wp-heading-inline"><?php esc_html_e( 'Available Migrations', 'wp-care-connector' ); ?></h2>
-            <div class="">
-                <button type="button" id="wp-care-btn-create" class="page-title-action"><?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?></button>
-                <button type="button" id="wp-care-btn-upload" class="page-title-action"><?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?></button>
-            </div>
-        </div>
+        <h2><?php esc_html_e( 'Available Migrations', 'wp-care-connector' ); ?></h2>
         <?php if ( ! empty( $migrations ) ) : ?>
         <table class="widefat striped">
             <thead>
@@ -182,7 +198,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             </tbody>
         </table>
         <?php else : ?>
-        <p class="description"><?php esc_html_e( 'No migrations yet. Click "Create Migration" or "Upload Migration" to get started.', 'wp-care-connector' ); ?></p>
+        <p class="description"><?php esc_html_e( 'No migrations yet. Use the cards above to get started.', 'wp-care-connector' ); ?></p>
         <?php endif; ?>
     </div>
 

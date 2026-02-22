@@ -51,20 +51,23 @@
             $('.wp-care-panel').hide();
 
             if (!isVisible) {
-                // Hide table, show panel
+                // Hide action cards and table, show panel
+                $('#wp-care-action-cards').hide();
                 $('#wp-care-migrations-table').hide();
                 $panel.show();
             } else {
-                // Panel was open, now closed — show table
+                // Panel was open, now closed — show action cards and table
+                $('#wp-care-action-cards').show();
                 $('#wp-care-migrations-table').show();
             }
         },
 
         /**
-         * Close all panels and show table.
+         * Close all panels and show action cards + table.
          */
         closePanels: function() {
             $('.wp-care-panel').hide();
+            $('#wp-care-action-cards').show();
             $('#wp-care-migrations-table').show();
         },
 
@@ -377,6 +380,7 @@
 
             $('#wp-care-migration-progress').hide();
             $('#wp-care-migration-download').show();
+            $('#wp-care-action-cards').show();
             $('#wp-care-migrations-table').show();
         },
 
@@ -395,6 +399,7 @@
 
             $('#wp-care-migration-progress').hide();
             $('#wp-care-restore-complete').show();
+            $('#wp-care-action-cards').show();
             $('#wp-care-migrations-table').show();
 
             $('.wp-care-migration-checkboxes input').prop('disabled', false);
@@ -422,6 +427,7 @@
             if (state === 'running') {
                 // Hide everything except progress
                 $('.wp-care-panel').hide();
+                $('#wp-care-action-cards').hide();
                 $('#wp-care-migrations-table').hide();
                 $('#wp-care-migration-download').hide();
                 $('#wp-care-restore-complete').hide();
@@ -437,7 +443,8 @@
                 $('.wp-care-migration-checkboxes input').prop('disabled', true);
                 $('.wp-care-restore-btn').prop('disabled', true);
             } else {
-                // Show table (buttons are inside it)
+                // Show action cards and table
+                $('#wp-care-action-cards').show();
                 $('#wp-care-migrations-table').show();
 
                 // Enable inputs
