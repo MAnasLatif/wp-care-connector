@@ -193,8 +193,8 @@ class WP_Care_Admin {
                     'exporting_db'           => __( 'Exporting database...', 'wp-care-connector' ),
                     'scanning'               => __( 'Scanning files...', 'wp-care-connector' ),
                     'archiving'              => __( 'Archiving files...', 'wp-care-connector' ),
-                    'finalizing'             => __( 'Finalizing backup...', 'wp-care-connector' ),
-                    'complete'               => __( 'Migration backup complete!', 'wp-care-connector' ),
+                    'finalizing'             => __( 'Finalizing migration...', 'wp-care-connector' ),
+                    'complete'               => __( 'Migration complete!', 'wp-care-connector' ),
                     'error'                  => __( 'Operation failed', 'wp-care-connector' ),
                     'confirm_cancel'         => __( 'Are you sure you want to cancel?', 'wp-care-connector' ),
                     'export_title'           => __( 'Export Progress', 'wp-care-connector' ),
@@ -204,6 +204,7 @@ class WP_Care_Admin {
                     'restore_files'          => __( 'Restoring files...', 'wp-care-connector' ),
                     'restore_complete'       => __( 'Restore complete!', 'wp-care-connector' ),
                     'restore_checkpoint_note' => __( 'A database checkpoint was created before restoring. Checkpoint ID:', 'wp-care-connector' ),
+                    'confirm_delete'          => __( 'Delete this migration?', 'wp-care-connector' ),
                 ),
             ) );
         }
@@ -737,7 +738,7 @@ class WP_Care_Admin {
                         <span class="dashicons dashicons-migrate" style="color: #2271b1;"></span>
                         <?php esc_html_e( 'Site Migration', 'wp-care-connector' ); ?>
                     </h2>
-                    <p><?php esc_html_e( 'Create a full site backup (database + files) for migration to a new host or domain.', 'wp-care-connector' ); ?></p>
+                    <p><?php esc_html_e( 'Create a full site migration (database + files) for moving to a new host or domain.', 'wp-care-connector' ); ?></p>
                     <a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_slug . '-migration' ) ); ?>" class="button button-primary">
                         <span class="dashicons dashicons-migrate" style="vertical-align: middle;"></span>
                         <?php esc_html_e( 'Go to Migration', 'wp-care-connector' ); ?>
@@ -1143,7 +1144,7 @@ class WP_Care_Admin {
                 'migration_id' => $result['id'],
                 'size'         => $result['archive_size_human'],
             ) );
-            $this->redirect_with_notice( 'success', __( 'Migration backup uploaded successfully.', 'wp-care-connector' ) );
+            $this->redirect_with_notice( 'success', __( 'Migration uploaded successfully.', 'wp-care-connector' ) );
         }
 
         wp_safe_redirect( admin_url( 'admin.php?page=' . $this->menu_slug . '-migration' ) );
@@ -1237,9 +1238,9 @@ class WP_Care_Admin {
 
             if ( $deleted ) {
                 WP_Care_Activity_Log::log( 'migration_deleted', array( 'migration_id' => $migration_id ) );
-                $this->redirect_with_notice( 'success', __( 'Migration backup deleted.', 'wp-care-connector' ) );
+                $this->redirect_with_notice( 'success', __( 'Migration deleted.', 'wp-care-connector' ) );
             } else {
-                $this->redirect_with_notice( 'error', __( 'Migration backup not found.', 'wp-care-connector' ) );
+                $this->redirect_with_notice( 'error', __( 'Migration not found.', 'wp-care-connector' ) );
             }
         }
 

@@ -94,10 +94,10 @@ class WP_Care_Activity_Log {
             'plugin_updated'     => __( 'Plugin Updated', 'wp-care-connector' ),
             'support_submitted'    => __( 'Support Request Submitted', 'wp-care-connector' ),
             'settings_saved'       => __( 'Settings Saved', 'wp-care-connector' ),
-            'migration_created'    => __( 'Migration Backup Created', 'wp-care-connector' ),
-            'migration_deleted'    => __( 'Migration Backup Deleted', 'wp-care-connector' ),
-            'migration_downloaded' => __( 'Migration Backup Downloaded', 'wp-care-connector' ),
-            'migration_uploaded'   => __( 'Migration Backup Uploaded', 'wp-care-connector' ),
+            'migration_created'    => __( 'Migration Created', 'wp-care-connector' ),
+            'migration_deleted'    => __( 'Migration Deleted', 'wp-care-connector' ),
+            'migration_downloaded' => __( 'Migration Downloaded', 'wp-care-connector' ),
+            'migration_uploaded'   => __( 'Migration Uploaded', 'wp-care-connector' ),
             'migration_restored'   => __( 'Site Restored from Migration', 'wp-care-connector' ),
         );
 

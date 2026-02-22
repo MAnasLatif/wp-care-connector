@@ -5,7 +5,7 @@
  * @package WP_Care_Connector
  * @since 1.2.0
  *
- * @var array $migrations List of existing migration backups.
+ * @var array $migrations List of existing migrations.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 <div class="wrap wp-care-wrap">
     <h1><?php esc_html_e( 'Site Migration', 'wp-care-connector' ); ?></h1>
-    <p class="description"><?php esc_html_e( 'Create, upload, or restore full site backups (database + files) for migration.', 'wp-care-connector' ); ?></p>
+    <p class="description"><?php esc_html_e( 'Create, upload, or restore full site migrations (database + files).', 'wp-care-connector' ); ?></p>
 
     <!-- ================================================================
          EXPORT SECTION
@@ -22,12 +22,12 @@ if ( ! defined( 'ABSPATH' ) ) {
     <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
         <h2 style="margin-top: 0;">
             <span class="dashicons dashicons-upload" style="color: #2271b1; vertical-align: middle;"></span>
-            <?php esc_html_e( 'Create Backup', 'wp-care-connector' ); ?>
+            <?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?>
         </h2>
 
         <div class="wp-care-migration-checkboxes">
             <div class="">
-                <h3 style="margin-bottom: 8px;"><?php esc_html_e( 'Include in backup', 'wp-care-connector' ); ?></h3>
+                <h3 style="margin-bottom: 8px;"><?php esc_html_e( 'Include in migration', 'wp-care-connector' ); ?></h3>
                 <label><input type="checkbox" id="wp-care-opt-include_database" checked> <?php esc_html_e( 'Database', 'wp-care-connector' ); ?></label>
                 <label><input type="checkbox" id="wp-care-opt-include_themes" checked> <?php esc_html_e( 'Themes', 'wp-care-connector' ); ?></label>
                 <label><input type="checkbox" id="wp-care-opt-include_plugins" checked> <?php esc_html_e( 'Plugins', 'wp-care-connector' ); ?></label>
@@ -47,7 +47,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         <div style="margin-top: 20px;">
             <button id="wp-care-migration-start" class="button button-primary button-hero">
                 <span class="dashicons dashicons-migrate" style="vertical-align: middle; margin-right: 4px;"></span>
-                <?php esc_html_e( 'Create Migration Backup', 'wp-care-connector' ); ?>
+                <?php esc_html_e( 'Create Migration', 'wp-care-connector' ); ?>
             </button>
             <button id="wp-care-migration-cancel" class="button" style="display: none; margin-left: 10px;">
                 <?php esc_html_e( 'Cancel', 'wp-care-connector' ); ?>
@@ -69,7 +69,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <div id="wp-care-migration-download" class="card" style="max-width: 800px; padding: 20px; margin-top: 20px; display: none;">
         <h2 style="margin-top: 0; color: #00a32a;">
             <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
-            <?php esc_html_e( 'Migration Backup Complete!', 'wp-care-connector' ); ?>
+            <?php esc_html_e( 'Migration Complete!', 'wp-care-connector' ); ?>
         </h2>
         <p id="wp-care-migration-filesize"></p>
         <a href="#" id="wp-care-migration-download-link" class="button button-primary button-hero">
@@ -84,7 +84,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
             <?php esc_html_e( 'Site Restored Successfully!', 'wp-care-connector' ); ?>
         </h2>
-        <p><?php esc_html_e( 'Your site has been restored from the migration backup.', 'wp-care-connector' ); ?></p>
+        <p><?php esc_html_e( 'Your site has been restored from the migration.', 'wp-care-connector' ); ?></p>
         <p id="wp-care-restore-checkpoint" style="color: #666;"></p>
     </div>
 
@@ -99,7 +99,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
         <h2 style="margin-top: 0;">
             <span class="dashicons dashicons-upload" style="color: #2271b1; vertical-align: middle;"></span>
-            <?php esc_html_e( 'Upload Migration Backup', 'wp-care-connector' ); ?>
+            <?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?>
         </h2>
         <p><?php esc_html_e( 'Upload a .zip migration file previously exported from this or another site.', 'wp-care-connector' ); ?></p>
 
@@ -133,7 +133,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <div class="card" style="max-width: 800px; padding: 20px; margin-top: 20px;">
         <h2 style="margin-top: 0;">
             <span class="dashicons dashicons-backup" style="color: #2271b1; vertical-align: middle;"></span>
-            <?php esc_html_e( 'Available Migration Backups', 'wp-care-connector' ); ?>
+            <?php esc_html_e( 'Available Migrations', 'wp-care-connector' ); ?>
         </h2>
         <table class="widefat striped">
             <thead>
@@ -176,7 +176,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                             <?php wp_nonce_field( 'wp_care_delete_migration', '_wpnonce' ); ?>
                             <input type="hidden" name="action" value="wp_care_delete_migration">
                             <input type="hidden" name="migration_id" value="<?php echo esc_attr( $m['id'] ); ?>">
-                            <button type="submit" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Delete this migration backup?', 'wp-care-connector' ); ?>');">
+                            <button type="submit" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Delete this migration?', 'wp-care-connector' ); ?>');">
                                 <?php esc_html_e( 'Delete', 'wp-care-connector' ); ?>
                             </button>
                         </form>
