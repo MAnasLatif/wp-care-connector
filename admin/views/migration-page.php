@@ -77,28 +77,44 @@ if ( ! defined( 'ABSPATH' ) ) {
             <?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?>
             <button type="button" class="wp-care-panel-close">&times;</button>
         </h2>
-        <p><?php esc_html_e( 'Upload a .zip migration file from this or another site.', 'wp-care-connector' ); ?></p>
 
-        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" id="wp-care-upload-form">
             <?php wp_nonce_field( 'wp_care_upload_migration', '_wpnonce' ); ?>
             <input type="hidden" name="action" value="wp_care_upload_migration">
+            <input type="file" id="wp-care-file-input" name="migration_file" accept=".zip" required style="position: absolute; left: -9999px;">
 
-            <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
-                <input type="file" name="migration_file" accept=".zip" required
-                       style="padding: 8px; border: 1px solid #8c8f94; border-radius: 4px;">
+            <!-- Drop Zone -->
+            <div class="wp-care-upload-zone" id="wp-care-upload-zone">
+                <span class="dashicons dashicons-cloud-upload"></span>
+                <p class="wp-care-upload-title"><?php esc_html_e( 'Drag & drop your migration file here', 'wp-care-connector' ); ?></p>
+                <p class="wp-care-upload-or"><?php esc_html_e( 'or', 'wp-care-connector' ); ?></p>
+                <button type="button" class="button" id="wp-care-browse-btn"><?php esc_html_e( 'Browse Files', 'wp-care-connector' ); ?></button>
+                <p class="wp-care-upload-hint">
+                    <?php
+                    printf(
+                        esc_html__( '.zip files only — Maximum size: %s', 'wp-care-connector' ),
+                        esc_html( size_format( wp_max_upload_size() ) )
+                    );
+                    ?>
+                </p>
+            </div>
+
+            <!-- Selected File -->
+            <div class="wp-care-upload-file" id="wp-care-upload-file" style="display: none;">
+                <span class="dashicons dashicons-media-archive"></span>
+                <div class="wp-care-upload-file-info">
+                    <span class="wp-care-upload-file-name" id="wp-care-upload-file-name"></span>
+                    <span class="wp-care-upload-file-size" id="wp-care-upload-file-size"></span>
+                </div>
+                <button type="button" class="wp-care-upload-file-remove" id="wp-care-upload-file-remove">&times;</button>
+            </div>
+
+            <div id="wp-care-upload-submit-wrap" style="display: none; margin-top: 16px;">
                 <button type="submit" class="button button-primary">
-                    <span class="dashicons dashicons-upload" style="vertical-align: middle;"></span>
-                    <?php esc_html_e( 'Upload', 'wp-care-connector' ); ?>
+                    <span class="dashicons dashicons-upload" style="vertical-align: middle; margin-right: 4px;"></span>
+                    <?php esc_html_e( 'Upload Migration', 'wp-care-connector' ); ?>
                 </button>
             </div>
-            <p class="description" style="margin-top: 8px;">
-                <?php
-                printf(
-                    esc_html__( 'Maximum upload size: %s', 'wp-care-connector' ),
-                    esc_html( size_format( wp_max_upload_size() ) )
-                );
-                ?>
-            </p>
         </form>
     </div>
 

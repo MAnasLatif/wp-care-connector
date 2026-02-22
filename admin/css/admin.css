@@ -349,6 +349,110 @@
     color: #d63638;
 }
 
+/* Upload Zone */
+.wp-care-upload-zone {
+    border: 2px dashed #c3c4c7;
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    margin-top: 15px;
+}
+
+.wp-care-upload-zone:hover,
+.wp-care-upload-zone.dragover {
+    border-color: #2271b1;
+    background: #f0f6fc;
+}
+
+.wp-care-upload-zone .dashicons {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #c3c4c7;
+    display: block;
+    margin: 0 auto 8px;
+}
+
+.wp-care-upload-zone:hover .dashicons,
+.wp-care-upload-zone.dragover .dashicons {
+    color: #2271b1;
+}
+
+.wp-care-upload-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1d2327;
+    margin: 0 0 4px;
+}
+
+.wp-care-upload-or {
+    color: #787c82;
+    font-size: 13px;
+    margin: 8px 0;
+}
+
+.wp-care-upload-hint {
+    color: #787c82;
+    font-size: 12px;
+    margin: 16px 0 0;
+}
+
+/* Selected File */
+.wp-care-upload-file {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #f6f7f7;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+.wp-care-upload-file .dashicons {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #2271b1;
+}
+
+.wp-care-upload-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.wp-care-upload-file-name {
+    font-weight: 500;
+    font-size: 13px;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wp-care-upload-file-size {
+    color: #787c82;
+    font-size: 12px;
+}
+
+.wp-care-upload-file-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: #787c82;
+    padding: 4px 8px;
+    line-height: 1;
+    border-radius: 4px;
+}
+
+.wp-care-upload-file-remove:hover {
+    color: #d63638;
+    background: #fcf0f1;
+}
+
 .wp-care-migration-checkboxes label {
     display: block;
     padding: 5px 0;

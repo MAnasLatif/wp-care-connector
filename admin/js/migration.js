@@ -502,5 +502,86 @@
             $('#wp-care-restore-modal').hide();
             WPCareMigration.migrationId = null;
         });
+
+        // =============================================================
+        // Upload Zone — drag & drop + file select
+        // =============================================================
+
+        var $zone = $('#wp-care-upload-zone');
+        var $fileInput = $('#wp-care-file-input');
+        var $fileDisplay = $('#wp-care-upload-file');
+        var $submitWrap = $('#wp-care-upload-submit-wrap');
+
+        function formatFileSize(bytes) {
+            if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+            if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+            if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return bytes + ' bytes';
+        }
+
+        function showSelectedFile(file) {
+            $('#wp-care-upload-file-name').text(file.name);
+            $('#wp-care-upload-file-size').text(formatFileSize(file.size));
+            $zone.hide();
+            $fileDisplay.show();
+            $submitWrap.show();
+        }
+
+        function clearSelectedFile() {
+            $fileInput.val('');
+            $fileDisplay.hide();
+            $submitWrap.hide();
+            $zone.show();
+        }
+
+        // Browse button
+        $('#wp-care-browse-btn').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $fileInput.trigger('click');
+        });
+
+        // Clicking the zone triggers browse
+        $zone.on('click', function() {
+            $fileInput.trigger('click');
+        });
+
+        // File selected via input
+        $fileInput.on('change', function() {
+            if (this.files && this.files[0]) {
+                showSelectedFile(this.files[0]);
+            }
+        });
+
+        // Remove selected file
+        $('#wp-care-upload-file-remove').on('click', function() {
+            clearSelectedFile();
+        });
+
+        // Drag events
+        $zone.on('dragover dragenter', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('dragover');
+        });
+
+        $zone.on('dragleave drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('dragover');
+        });
+
+        $zone.on('drop', function(e) {
+            var files = e.originalEvent.dataTransfer.files;
+            if (files && files.length > 0) {
+                var file = files[0];
+                if (file.name.toLowerCase().endsWith('.zip')) {
+                    $fileInput[0].files = files;
+                    showSelectedFile(file);
+                } else {
+                    alert(wpCareMigration.strings.zip_only || 'Please select a .zip file.');
+                }
+            }
+        });
     });
 })(jQuery);
