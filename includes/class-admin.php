@@ -66,8 +66,10 @@ class WP_Care_Admin {
         add_action( 'wp_ajax_wp_care_migration_download', array( $this, 'ajax_migration_download' ) );
         add_action( 'wp_ajax_wp_care_restore_init', array( $this, 'ajax_restore_init' ) );
         add_action( 'wp_ajax_wp_care_restore_chunk', array( $this, 'ajax_restore_chunk' ) );
+        add_action( 'wp_ajax_wp_care_plugin_disconnect', array( $this, 'ajax_plugin_disconnect' ) );
         add_action( 'admin_notices', array( $this, 'show_notices' ) );
         add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
+        add_action( 'admin_init', array( $this, 'handle_plugin_connect_callback' ) );
     }
 
     /**
@@ -508,6 +510,7 @@ class WP_Care_Admin {
         $api_url = get_option( 'wp_care_api_url', '' );
         $api_key = WP_Care_Security::get_key_display();
         $has_key = WP_Care_Security::has_api_key();
+        $platform_url = defined( 'WP_CARE_PLATFORM_URL' ) ? WP_CARE_PLATFORM_URL : 'http://localhost:3001';
         ?>
         <div class="wrap">
             <h1><?php esc_html_e( 'WP Care Settings', 'wp-care-connector' ); ?></h1>
@@ -541,7 +544,7 @@ class WP_Care_Admin {
                             </code>
                             <?php if ( ! $has_key ) : ?>
                                 <p class="description" style="color: #d63638;">
-                                    <?php esc_html_e( 'API key will be generated automatically when you save settings.', 'wp-care-connector' ); ?>
+                                    <?php esc_html_e( 'Connect to WP Care Platform to generate an API key.', 'wp-care-connector' ); ?>
                                 </p>
                             <?php else : ?>
                                 <p class="description">
@@ -552,26 +555,84 @@ class WP_Care_Admin {
                     </tr>
                     <tr>
                         <th scope="row">
-                            <?php esc_html_e( 'Connect to Platform', 'wp-care-connector' ); ?>
+                            <?php esc_html_e( 'WP Care Platform', 'wp-care-connector' ); ?>
                         </th>
                         <td>
-                            <label>
-                                <input type="checkbox" name="wp_care_consent" value="1"
-                                       <?php checked( get_option( 'wp_care_consent', false ) ); ?>>
-                                <?php esc_html_e( 'I consent to connect this site to the WP Care Platform', 'wp-care-connector' ); ?>
-                            </label>
-                            <p class="description">
-                                <?php esc_html_e( 'When enabled, the following data will be transmitted to the WP Care Platform:', 'wp-care-connector' ); ?>
-                            </p>
-                            <ul style="list-style: disc; margin-left: 20px; color: #666;">
-                                <li><?php esc_html_e( 'Site URL and name', 'wp-care-connector' ); ?></li>
-                                <li><?php esc_html_e( 'WordPress and PHP versions', 'wp-care-connector' ); ?></li>
-                                <li><?php esc_html_e( 'Active theme and plugins', 'wp-care-connector' ); ?></li>
-                                <li><?php esc_html_e( 'Content statistics (post/page counts)', 'wp-care-connector' ); ?></li>
-                            </ul>
-                            <p class="description">
-                                <?php esc_html_e( 'No passwords, personal data, or content is ever transmitted.', 'wp-care-connector' ); ?>
-                            </p>
+                            <?php if ( $has_key ) : ?>
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                    <span class="dashicons dashicons-yes-alt" style="color: #00a32a; font-size: 20px;"></span>
+                                    <strong style="color: #00a32a;"><?php esc_html_e( 'Connected', 'wp-care-connector' ); ?></strong>
+                                </div>
+                                <button type="button" class="button" id="wp-care-disconnect" style="color: #d63638; border-color: #d63638;">
+                                    <span class="dashicons dashicons-no" style="vertical-align: middle; margin-right: 3px;"></span>
+                                    <?php esc_html_e( 'Disconnect', 'wp-care-connector' ); ?>
+                                </button>
+                                <span id="wp-care-disconnect-status" style="margin-left: 10px;"></span>
+                                <p class="description">
+                                    <?php esc_html_e( 'Disconnecting will remove the API key and unlink this site from your WP Care account.', 'wp-care-connector' ); ?>
+                                </p>
+                                <script>
+                                document.getElementById('wp-care-disconnect').addEventListener('click', function() {
+                                    if ( ! confirm('<?php echo esc_js( __( 'Are you sure you want to disconnect this site from WP Care? The API key will be deleted.', 'wp-care-connector' ) ); ?>') ) {
+                                        return;
+                                    }
+                                    var btn = this;
+                                    var statusSpan = document.getElementById('wp-care-disconnect-status');
+                                    btn.disabled = true;
+                                    statusSpan.textContent = '<?php echo esc_js( __( 'Disconnecting...', 'wp-care-connector' ) ); ?>';
+                                    statusSpan.style.color = '#666';
+
+                                    fetch('<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>', {
+                                        method: 'POST',
+                                        credentials: 'same-origin',
+                                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                        body: 'action=wp_care_plugin_disconnect&_wpnonce=<?php echo esc_js( wp_create_nonce( 'wp_care_plugin_disconnect' ) ); ?>'
+                                    })
+                                    .then(function(r) { return r.json(); })
+                                    .then(function(data) {
+                                        if ( data.success ) {
+                                            statusSpan.textContent = '✓ <?php echo esc_js( __( 'Disconnected! Reloading...', 'wp-care-connector' ) ); ?>';
+                                            statusSpan.style.color = '#00a32a';
+                                            setTimeout(function() { location.reload(); }, 1000);
+                                        } else {
+                                            statusSpan.textContent = '✗ ' + (data.data || '<?php echo esc_js( __( 'Disconnect failed', 'wp-care-connector' ) ); ?>');
+                                            statusSpan.style.color = '#d63638';
+                                            btn.disabled = false;
+                                        }
+                                    })
+                                    .catch(function(err) {
+                                        statusSpan.textContent = '✗ ' + err.message;
+                                        statusSpan.style.color = '#d63638';
+                                        btn.disabled = false;
+                                    });
+                                });
+                                </script>
+                            <?php else : ?>
+                                <?php
+                                $site_url = site_url();
+                                $return_url = admin_url( 'admin.php?page=' . $this->menu_slug . '-settings&wp_care_connect=1' );
+                                $connect_url = $platform_url . '/plugin/connect?site_url=' . rawurlencode( $site_url ) . '&return_url=' . rawurlencode( $return_url );
+                                ?>
+                                <a href="<?php echo esc_url( $connect_url ); ?>" class="button button-primary" style="font-size: 14px; padding: 6px 20px; height: auto;">
+                                    <span class="dashicons dashicons-admin-links" style="vertical-align: middle; margin-right: 5px;"></span>
+                                    <?php esc_html_e( 'Connect to WP Care', 'wp-care-connector' ); ?>
+                                </a>
+                                <p class="description">
+                                    <?php esc_html_e( 'Click to link this site to your WP Care account. You will be redirected to log in or create an account.', 'wp-care-connector' ); ?>
+                                </p>
+                                <p class="description">
+                                    <?php esc_html_e( 'When connected, the following data will be shared:', 'wp-care-connector' ); ?>
+                                </p>
+                                <ul style="list-style: disc; margin-left: 20px; color: #666;">
+                                    <li><?php esc_html_e( 'Site URL and name', 'wp-care-connector' ); ?></li>
+                                    <li><?php esc_html_e( 'WordPress and PHP versions', 'wp-care-connector' ); ?></li>
+                                    <li><?php esc_html_e( 'Active theme and plugins', 'wp-care-connector' ); ?></li>
+                                    <li><?php esc_html_e( 'Content statistics (post/page counts)', 'wp-care-connector' ); ?></li>
+                                </ul>
+                                <p class="description">
+                                    <?php esc_html_e( 'No passwords, personal data, or content is ever transmitted.', 'wp-care-connector' ); ?>
+                                </p>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 </table>
@@ -883,37 +944,161 @@ class WP_Care_Admin {
         $api_url = isset( $_POST['wp_care_api_url'] ) ? esc_url_raw( wp_unslash( $_POST['wp_care_api_url'] ) ) : '';
         update_option( 'wp_care_api_url', $api_url );
 
-        // Save consent preference
-        $consent = isset( $_POST['wp_care_consent'] ) && $_POST['wp_care_consent'] === '1';
-        update_option( 'wp_care_consent', $consent );
+        WP_Care_Activity_Log::log( 'settings_saved', array( 'api_url' => $api_url ) );
 
-        // Generate API key if not exists
-        if ( ! WP_Care_Security::has_api_key() ) {
-            WP_Care_Security::generate_api_key();
-        }
-
-        // Only register with central API if user has given explicit consent
-        $message = __( 'Settings saved successfully.', 'wp-care-connector' );
-        if ( $consent && ! empty( $api_url ) && WP_Care_Security::has_api_key() ) {
-            $result = WP_Care_API_Endpoints::register_with_central_api();
-            if ( is_wp_error( $result ) ) {
-                $message = sprintf(
-                    __( 'Settings saved. Registration failed: %s', 'wp-care-connector' ),
-                    $result->get_error_message()
-                );
-            } else {
-                $message = __( 'Settings saved and site registered with API.', 'wp-care-connector' );
-            }
-        } elseif ( ! $consent && ! empty( $api_url ) ) {
-            $message = __( 'Settings saved. Check the consent box to connect to the platform.', 'wp-care-connector' );
-        }
-
-        WP_Care_Activity_Log::log( 'settings_saved', array( 'api_url' => $api_url, 'consent' => $consent ) );
-
-        // Redirect with success
-        $this->redirect_with_notice( 'success', $message );
+        set_transient( 'wp_care_admin_notice', array(
+            'type'    => 'success',
+            'message' => __( 'Settings saved successfully.', 'wp-care-connector' ),
+        ), 30 );
         wp_safe_redirect( admin_url( 'admin.php?page=' . $this->menu_slug . '-settings' ) );
         exit;
+    }
+
+    /**
+     * Handle the connect callback from WP Care platform.
+     *
+     * When the user returns from the platform with an auth code,
+     * this method exchanges it for site registration and generates
+     * the API key.
+     *
+     * @return void
+     */
+    public function handle_plugin_connect_callback() {
+        // Only run on our settings page when wp_care_connect=1 and auth_code is present
+        if ( ! isset( $_GET['page'] ) || $_GET['page'] !== $this->menu_slug . '-settings' ) {
+            return;
+        }
+        if ( ! isset( $_GET['wp_care_connect'] ) || ! isset( $_GET['auth_code'] ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $settings_url = admin_url( 'admin.php?page=' . $this->menu_slug . '-settings' );
+
+        // Don't process if we already have an API key
+        if ( WP_Care_Security::has_api_key() ) {
+            set_transient( 'wp_care_admin_notice', array(
+                'type'    => 'error',
+                'message' => __( 'This site is already connected. Disconnect first to reconnect.', 'wp-care-connector' ),
+            ), 30 );
+            wp_safe_redirect( $settings_url );
+            exit;
+        }
+
+        $auth_code = sanitize_text_field( wp_unslash( $_GET['auth_code'] ) );
+        $site_url = site_url();
+
+        // Generate a new API key
+        $api_key = WP_Care_Security::generate_api_key();
+
+        // Get the API URL (use the configured one, or fall back to localhost API server)
+        $api_url = get_option( 'wp_care_api_url', '' );
+        if ( empty( $api_url ) ) {
+            $api_url = 'http://localhost:3000';
+        }
+
+        // Exchange the auth code with the backend
+        $response = wp_remote_post( rtrim( $api_url, '/' ) . '/api/v1/plugin-connect/exchange', array(
+            'timeout' => 30,
+            'headers' => array( 'Content-Type' => 'application/json' ),
+            'body'    => wp_json_encode( array(
+                'authCode' => $auth_code,
+                'siteUrl'  => $site_url,
+                'apiKey'   => $api_key,
+            ) ),
+        ) );
+
+        if ( is_wp_error( $response ) ) {
+            // Exchange failed - delete the generated key
+            WP_Care_Security::delete_api_key();
+            set_transient( 'wp_care_admin_notice', array(
+                'type'    => 'error',
+                'message' => sprintf(
+                    __( 'Connection failed: %s', 'wp-care-connector' ),
+                    $response->get_error_message()
+                ),
+            ), 30 );
+            wp_safe_redirect( $settings_url );
+            exit;
+        }
+
+        $status_code = wp_remote_retrieve_response_code( $response );
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+        if ( $status_code !== 201 || empty( $body['success'] ) ) {
+            // Exchange failed - delete the generated key
+            WP_Care_Security::delete_api_key();
+            $error_msg = isset( $body['error']['message'] ) ? $body['error']['message'] : __( 'Unknown error', 'wp-care-connector' );
+            set_transient( 'wp_care_admin_notice', array(
+                'type'    => 'error',
+                'message' => sprintf(
+                    __( 'Connection failed: %s', 'wp-care-connector' ),
+                    $error_msg
+                ),
+            ), 30 );
+            wp_safe_redirect( $settings_url );
+            exit;
+        }
+
+        // Success! Enable consent automatically since user explicitly connected
+        update_option( 'wp_care_consent', true );
+
+        WP_Care_Activity_Log::log( 'platform_connected', array(
+            'site_id' => isset( $body['data']['siteId'] ) ? $body['data']['siteId'] : '',
+        ) );
+
+        set_transient( 'wp_care_admin_notice', array(
+            'type'    => 'success',
+            'message' => __( 'Site connected to WP Care successfully! Your API key has been generated and registered.', 'wp-care-connector' ),
+        ), 30 );
+        wp_safe_redirect( $settings_url );
+        exit;
+    }
+
+    /**
+     * AJAX handler for disconnecting from WP Care platform.
+     *
+     * Notifies the backend to remove the site, then deletes
+     * the local API key.
+     *
+     * @return void
+     */
+    public function ajax_plugin_disconnect() {
+        check_ajax_referer( 'wp_care_plugin_disconnect' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( __( 'Permission denied.', 'wp-care-connector' ) );
+            return;
+        }
+
+        if ( ! WP_Care_Security::has_api_key() ) {
+            wp_send_json_error( __( 'No API key found. Already disconnected.', 'wp-care-connector' ) );
+            return;
+        }
+
+        $site_url = site_url();
+        $api_url = get_option( 'wp_care_api_url', '' );
+        if ( empty( $api_url ) ) {
+            $api_url = 'http://localhost:3000';
+        }
+
+        // Notify backend to remove the site
+        $response = wp_remote_post( rtrim( $api_url, '/' ) . '/api/v1/plugin-connect/disconnect', array(
+            'timeout' => 15,
+            'headers' => array( 'Content-Type' => 'application/json' ),
+            'body'    => wp_json_encode( array( 'siteUrl' => $site_url ) ),
+        ) );
+
+        // Even if backend notification fails, we still want to remove the local key
+        // The user explicitly wants to disconnect
+        WP_Care_Security::delete_api_key();
+        update_option( 'wp_care_consent', false );
+
+        WP_Care_Activity_Log::log( 'platform_disconnected', array() );
+
+        wp_send_json_success( __( 'Disconnected successfully.', 'wp-care-connector' ) );
     }
 
     /**
